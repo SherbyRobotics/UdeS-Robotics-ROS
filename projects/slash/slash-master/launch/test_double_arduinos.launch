@@ -1,6 +1,6 @@
 <launch>
 
-  <node pkg="slash-master-openloop" type="slash_teleop.py" name="slash_teleop">
+  <node pkg="slash-teleop" type="slash_teleop.py" name="slash_teleop">
   </node>
 
   <node pkg="joy" type="joy_node" name="joystick" >

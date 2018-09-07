@@ -194,6 +194,12 @@ class LaneDetector:
     
     slope, intercept = line
     
+    # before transfering to integer, make sure none of the values are infinite
+    if ((y1 - intercept)/slope) == float('inf'):
+	return None
+    if ((y2 - intercept)/slope) == float('inf'):
+	return None
+
     # make sure everything is integer as cv2.line requires it
     x1 = int((y1 - intercept)/slope)
     x2 = int((y2 - intercept)/slope)
@@ -286,11 +292,7 @@ class LaneDetector:
 def main(args):
   ic = LaneDetector()
   rospy.init_node('LINE_DETECTION', anonymous=True)
-  try:
-    rospy.spin()
-  except KeyboardInterrupt:
-    print("Shutting down")
-  cv2.destroyAllWindows()
+  rospy.spin()
 
 if __name__ == '__main__':
     main(sys.argv)
