@@ -11,10 +11,10 @@
   <node pkg="vision" type="camreader.py" name="CAM_reader">
   </node>
 
-  <node pkg="image_treatment" type="lane_detec.py" name="CAM_treatments">
+  <node pkg="slash_vision" type="lane_detec.py" name="CAM_treatments">
   </node>
 
-  <node pkg="image_treatment" type="observer.py" name="OBSERVER">
+  <node pkg="slash_localization" type="observer.py" name="OBSERVER">
   </node>
 
 </launch>
