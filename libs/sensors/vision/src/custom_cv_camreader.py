@@ -33,8 +33,8 @@ class camreader(object):
         
         # Memory
         self.camera_IMG     = None
-        self.camera_msg    = None
-        self.processed_img =None
+        self.camera_msg     = None
+        self.processed_img  = None
         
         # First run
         self.load_params( None )
@@ -99,7 +99,7 @@ class camreader(object):
     def process_frame(self):
         """ Pre-pros image and publish """
     
-        if not self.camera_IMG == None:
+        if not self.camera_IMG is None:
         
             # Crop
             h,w  = self.camera_IMG.shape[:2]
@@ -134,7 +134,7 @@ class camreader(object):
     def publish_frame(self):
         """ """
         
-        if not self.processed_img == None:
+        if not self.processed_img is None:
             
              # Publish Message
             img_msg = self.bridge.cv2_to_imgmsg( self.processed_img , "bgr8")

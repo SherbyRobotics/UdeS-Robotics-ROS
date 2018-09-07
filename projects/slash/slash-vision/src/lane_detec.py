@@ -2,12 +2,14 @@
 
 import math
 import sys
-from slash_vision.msg import CamState
-from std_msgs.msg import Int32MultiArray
-import rospy
-from sensor_msgs.msg import Image
+import time
 import cv2
 import numpy as np
+import rospy
+
+from slash_vision.msg import CamState
+from std_msgs.msg import Int32MultiArray
+from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from collections import deque
 
@@ -18,6 +20,9 @@ class LaneDetector:
   ##########################################################
 
   def __init__(self):
+
+    self.firstRun = True
+    self.t_0 = rospy.get_rostime()
     
     self.left_lines  = deque(maxlen=QUEUE_LENGTH)
     self.right_lines = deque(maxlen=QUEUE_LENGTH)
@@ -32,18 +37,21 @@ class LaneDetector:
 
   
   def callback(self,data):
-    try:
-      width = 0.4
-      image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-      green = self.select_white_yellow(image)
-      smooth_gray  = self.apply_smoothing(green)
-      edges        = self.detect_edges(smooth_gray)
-      regions      = self.select_region(edges)
-      regions_ori  = self.select_region(image)
-      lines, img_line       = self.hough_lines(regions)
-      left_line, right_line = self.lane_lines(image, lines)
-      left_mean_line        = self.mean_line(left_line,  self.left_lines)
-      right_mean_line       = self.mean_line(right_line, self.right_lines)
+ 
+    width = 0.4
+    image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+    green = self.select_white_yellow(image)
+    smooth_gray  = self.apply_smoothing(green)
+    edges        = self.detect_edges(smooth_gray)
+    regions      = self.select_region(edges)
+    regions_ori  = self.select_region(image)
+    lines, img_line       = self.hough_lines(regions)
+    if lines is None:
+	return None
+    left_line, right_line = self.lane_lines(image, lines)
+    left_mean_line        = self.mean_line(left_line,  self.left_lines)
+    right_mean_line       = self.mean_line(right_line, self.right_lines)
+    if left_mean_line is not None and right_mean_line is not None:
       state_y      = self.lateral_deviation((left_mean_line, right_mean_line),image ,width)
       final_img    = self.draw_lines(image, (left_mean_line, right_mean_line), state_y)
       
@@ -52,20 +60,14 @@ class LaneDetector:
       msg.state_y = state_y
       self.image_pub.publish(msg)
       
-              
-    except CvBridgeError as e:
-      print(e)
-      
-    #cv2.imshow("Filtered",white_yellow)
-    cv2.imshow("GRAY", smooth_gray)
-    cv2.imshow("Canny", edges)
-    cv2.imshow("ROI", regions)
-    cv2.imshow("ROI ori", regions_ori)
-    cv2.imshow("Lines", img_line)
-    cv2.imshow("Final", final_img)
-  
-
-    cv2.waitKey(3)
+      #cv2.imshow("Filtered",white_yellow)
+      cv2.imshow("GRAY", smooth_gray)
+      cv2.imshow("Canny", edges)
+      cv2.imshow("ROI", regions)
+      cv2.imshow("ROI ori", regions_ori)
+      cv2.imshow("Lines", img_line)
+      cv2.imshow("Final", final_img)
+      cv2.waitKey(3)
       
   ##########################################################
 
@@ -144,10 +146,27 @@ class LaneDetector:
     img_line = np.copy(image)
     clr_img_line = cv2.cvtColor(img_line, cv2.COLOR_GRAY2BGR)
     lines = cv2.HoughLinesP(image, rho=1, theta=np.pi/180, threshold=20, minLineLength=20, maxLineGap=300)
+
+   # Time
+    t_now = rospy.get_rostime()
+    t_duration = t_now - self.t_0
+    t_secs = int(t_duration.secs)
+
+   # Gives info about wether or not lane have been detected
+    if lines is None:
+      if self.firstRun is True:
+        rospy.loginfo("Vision algorithm is starting. It takes a few seconds to detect a lane when starting")
+      elif t_secs>7:
+        rospy.loginfo("No lane detected")
+
+   # Print the lines detected by the Hough transform on the original image
     if lines is not None:
         for i in range(0, len(lines)):
             l = lines[i][0]
             cv2.line(clr_img_line, (l[0], l[1]), (l[2], l[3]), (0,0,255), 2, cv2.LINE_AA)
+
+   # Turn the "firstRun" parameter to false on the first run
+    self.firstRun = False
             
     return lines, clr_img_line
 
@@ -194,10 +213,8 @@ class LaneDetector:
     
     slope, intercept = line
     
-    # before transfering to integer, make sure none of the values are infinite
-    if ((y1 - intercept)/slope) == float('inf'):
-	return None
-    if ((y2 - intercept)/slope) == float('inf'):
+    # before transfering to integer, make sure none of the values are divided by 0
+    if slope == 0:
 	return None
 
     # make sure everything is integer as cv2.line requires it
@@ -215,17 +232,17 @@ class LaneDetector:
     
     if lines is None:
         return None
-    else:
+  
       
-     left_lane, right_lane = self.average_slope_intercept(lines)
+    left_lane, right_lane = self.average_slope_intercept(lines)
     
-     y1 = image.shape[0] # bottom of the image
-     y2 = y1*0.6         # slightly lower than the middle
+    y1 = image.shape[0] # bottom of the image
+    y2 = y1*0.6         # slightly lower than the middle
 
-     left_line  = self.make_line_points(y1, y2, left_lane)
-     right_line = self.make_line_points(y1, y2, right_lane)
+    left_line  = self.make_line_points(y1, y2, left_lane)
+    right_line = self.make_line_points(y1, y2, right_lane)
     
-     return left_line, right_line
+    return left_line, right_line
 
 
   ##########################################################
@@ -263,36 +280,29 @@ class LaneDetector:
 
   def lateral_deviation(self, lines, image, width):
     
-    if lines is None:
-      return None
-    
-    else:
-    
-     #lslope = (float(lines[0][1][1])-float(lines[0][0][1]))/(float(lines[0][1][0])-float(lines[0][0][0]))
-     #rslope = (float(lines[1][1][1])-float(lines[1][0][1]))/(float(lines[1][1][0])-float(lines[1][0][0]))
-     #lintercept = float(lines[0][1][1]) - lslope*float(lines[0][1][0])
-     #rintercept = float(lines[1][1][1]) - rslope*float(lines[1][1][0])
-     #x_inter = (rintercept-lintercept)/(lslope-rslope)
-     #y_inter = lslope*x_inter+lintercept
-     #dist_l = x_inter-lines[0][0][0]
-     #dist_r = lines[1][0][0]-x_inter
-     #state_y = ((width*dist_l)/(dist_l+dist_r))-width/2
+   #Intercept calculation
 
-     #TEST JUSTE AVEC POINTS
-     distl = 320-float(lines[0][0][0])
-     width_pix = float(lines[1][0][0])-float(lines[0][0][0])
-     state_y = -(width/2-distl/width_pix*width)
+    #lslope = (float(lines[0][1][1])-float(lines[0][0][1]))/(float(lines[0][1][0])-float(lines[0][0][0]))
+    #rslope = (float(lines[1][1][1])-float(lines[1][0][1]))/(float(lines[1][1][0])-float(lines[1][0][0]))
+    #lintercept = float(lines[0][1][1]) - lslope*float(lines[0][1][0])
+    #rintercept = float(lines[1][1][1]) - rslope*float(lines[1][1][0])
+    #x_inter = (rintercept-lintercept)/(lslope-rslope)
+    #y_inter = lslope*x_inter+lintercept
+    #dist_l = x_inter-lines[0][0][0]
+    #dist_r = lines[1][0][0]-x_inter
+    #state_y = ((width*dist_l)/(dist_l+dist_r))-width/2
+
+   #Bottom points calculation
+    distl = 320-float(lines[0][0][0])
+    width_pix = float(lines[1][0][0])-float(lines[0][0][0])
+    state_y = -(width/2-distl/width_pix*width)
      
-    
-  
-     return state_y
+    return state_y
 
   ##########################################################
 
-def main(args):
-  ic = LaneDetector()
-  rospy.init_node('LINE_DETECTION', anonymous=True)
-  rospy.spin()
-
 if __name__ == '__main__':
-    main(sys.argv)
+
+  rospy.init_node('LINE_DETECTION', anonymous=False)
+  node = LaneDetector()
+  rospy.spin()
