@@ -5,7 +5,7 @@
     <rosparam file="$(arg razor_config_file)" command="load"/>
   </node>
 
-  <node pkg="razor_imu_9dof" type="IMU_node.py" name="IMU_treatments">
+  <node pkg="razor_imu_9dof" type="initialization_node.py" name="IMU_init">
   </node>
 
   <node pkg="vision" type="camreader.py" name="CAM_reader">

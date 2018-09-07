@@ -16,16 +16,16 @@
     <rosparam file="$(arg razor_config_file)" command="load"/>
   </node>
 
-  <node pkg="razor_imu_9dof" type="IMU_node.py" name="IMU_treatments">
+  <node pkg="razor_imu_9dof" type="initialization_node.py" name="IMU_init">
   </node>
 
   <node pkg="vision" type="custom_cv_camreader.py" name="CAM_reader">
   </node>
 
-  <node pkg="image_treatment" type="lane_detec.py" name="CAM_treatments" output="screen">
+  <node pkg="slash_vision" type="lane_detec.py" name="CAM_treatments" output="screen">
   </node>
 
-  <node pkg="image_treatment" type="observer3.py" name="OBSERVER" output="screen">
+  <node pkg="slash_localization" type="observer.py" name="OBSERVER" output="screen">
   </node>
 
 </launch>
