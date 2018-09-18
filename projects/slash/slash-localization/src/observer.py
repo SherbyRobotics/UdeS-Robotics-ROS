@@ -22,8 +22,7 @@ class Observer:
     self.image_sub = rospy.Subscriber("ycam_msg",CamState,self.callback1)
     self.input_sub = rospy.Subscriber("cmd_vel",Twist,self.callback3)
     self.imu_sub = rospy.Subscriber("imu_msg",ImuStates,self.callback2)
-
-    
+  
     self.states_pub = rospy.Publisher("x_hat", StatesHat, queue_size=1)
 
     self.tlast = rospy.get_rostime()
@@ -32,6 +31,7 @@ class Observer:
     self.x = np.array([[0],[0],[0]])
     self.torque = 0
     self.delta = 0
+    self.observer = 1
 
   ##########################################################
 
@@ -58,12 +58,19 @@ class Observer:
       self.imu_accy     = imu.state_accy
       self.imu_theta = imu.state_theta
       self.t = rospy.get_rostime()
-      self.obs(self.cam_y,self.imu_accx,self.imu_accy,self.imu_theta,self.torque,self.delta, self.t)
-     
+
+      if self.cam_y == 1000:
+        self.obs2(self.imu_accx,self.imu_accy,self.imu_theta,self.torque,self.delta, self.t)       
+      else:
+        self.obs(self.cam_y,self.imu_accx,self.imu_accy,self.imu_theta,self.torque,self.delta, self.t)        
 
   #######################################################
 
   def obs(self, cam_y, imu_accx, imu_accy, imu_theta, torque, delta, t):
+
+     if self.observer == 1:
+        rospy.loginfo('Lane detected: Data based on observer 1 using "cam_y" informations.')
+        self.observer = 2
 
      a = 0.3
      b = 0.8
@@ -82,6 +89,7 @@ class Observer:
      D = np.array([[0.0,0.0],[c1,0.0],[0.0,-v**2],[0.0,0.0]])
      L = np.array([[0, 0, 0, 0],[1,0,0,0],[0,0,0,0]])
 
+
   #######################################################
   #-----------------------Inputs------------------------#
   #######################################################
@@ -93,6 +101,64 @@ class Observer:
   #######################################################
 
      y = np.array([[cam_y],[imu_accx],[imu_accy],[imu_theta]])
+
+  #######################################################
+  #----------------------Observer-----------------------#
+  #######################################################
+     
+     
+     x_hat = np.dot(B,u)*dt + np.dot(A,self.x)*dt + self.x + dt*(np.dot(L,y) - np.dot(L,np.dot(D,u)) - np.dot(L,np.dot(C,self.x)))
+     self.x = x_hat 
+     self.tlast = t
+
+  #######################################################
+  #----------------------Publisher----------------------#
+  #######################################################
+
+     msg = StatesHat()
+     msg.header.stamp = rospy.Time.now()
+     msg.state_Vx = x_hat[0]
+     msg.state_y= x_hat[1]
+     msg.state_theta = x_hat[2]
+     self.states_pub.publish(msg)
+
+  #######################################################
+
+  def obs2(self, imu_accx, imu_accy, imu_theta, torque, delta, t):
+
+     if self.observer == 2:
+        rospy.loginfo('No lane detected: Data based on observer 2 without vision informations')
+        self.observer = 1
+       
+
+     a = 0.3
+     b = 0.8
+     c1 = 1
+     c2 = 1
+     v = 1
+     dt = (t-self.tlast).to_sec()
+ 
+  #######################################################
+  #---------------------State-Space---------------------#
+  #######################################################
+
+     A = np.array([[-c2,0.0,0.0],[0.0,0.0,v],[0.0,0.0,0.0]])
+     B = np.array([[c1,0.0],[0.0,0.0],[0.0,v/b]])
+     C = np.array([[-c2,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,1.0]])
+     D = np.array([[c1,0.0],[0.0,-v**2],[0.0,0.0]])
+     L = np.array([[0,0,0],[0,0,0],[0,0,0]])
+
+  #######################################################
+  #-----------------------Inputs------------------------#
+  #######################################################
+
+     u = np.array([[torque],[delta]])
+
+  #######################################################
+  #-----------------------Sensors-----------------------#
+  #######################################################
+
+     y = np.array([[imu_accx],[imu_accy],[imu_theta]])
 
   #######################################################
   #----------------------Observer-----------------------#

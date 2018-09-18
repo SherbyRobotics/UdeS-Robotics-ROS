@@ -31,6 +31,9 @@ class LaneDetector:
 
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("cam_img_raw",Image,self.callback)
+
+    self.init = 0
+    self.detec = 0
   
 
   ##########################################################
@@ -46,11 +49,21 @@ class LaneDetector:
     regions      = self.select_region(edges)
     regions_ori  = self.select_region(image)
     lines, img_line       = self.hough_lines(regions)
+
     if lines is None:
-	return None
+      state_y = 1000 # state_y set to an arbitrary value to recognize a non-detected lane. Used in the hybrid observer to switch to scenario B.
+      msg = CamState()
+      msg.header.stamp = rospy.Time.now()
+      msg.state_y = state_y
+      self.image_pub.publish(msg)   
+      return None
+      
+
     left_line, right_line = self.lane_lines(image, lines)
     left_mean_line        = self.mean_line(left_line,  self.left_lines)
     right_mean_line       = self.mean_line(right_line, self.right_lines)
+
+    
     if left_mean_line is not None and right_mean_line is not None:
       state_y      = self.lateral_deviation((left_mean_line, right_mean_line),image ,width)
       final_img    = self.draw_lines(image, (left_mean_line, right_mean_line), state_y)
@@ -59,16 +72,19 @@ class LaneDetector:
       msg.header.stamp = rospy.Time.now()
       msg.state_y = state_y
       self.image_pub.publish(msg)
-      
-      #cv2.imshow("Filtered",white_yellow)
+      if self.init == 0:
+        rospy.loginfo("Lane detected: Publishing data.")
+        self.init = 1
+
       cv2.imshow("GRAY", smooth_gray)
       cv2.imshow("Canny", edges)
       cv2.imshow("ROI", regions)
       cv2.imshow("ROI ori", regions_ori)
       cv2.imshow("Lines", img_line)
       cv2.imshow("Final", final_img)
-      cv2.waitKey(3)
-      
+      cv2.waitKey(3)      
+      #cv2.imshow("Filtered",white_yellow)
+
   ##########################################################
 
   def select_white_yellow(self, image):
@@ -151,13 +167,12 @@ class LaneDetector:
     t_now = rospy.get_rostime()
     t_duration = t_now - self.t_0
     t_secs = int(t_duration.secs)
+    t_lostlane = t_now
 
    # Gives info about wether or not lane have been detected
-    if lines is None:
-      if self.firstRun is True:
-        rospy.loginfo("Vision algorithm is starting. It takes a few seconds to detect a lane when starting")
-      elif t_secs>7:
-        rospy.loginfo("No lane detected")
+    if lines is None and self.firstRun is True:
+        rospy.loginfo("Starting vision algorithm...")
+       
 
    # Print the lines detected by the Hough transform on the original image
     if lines is not None:
@@ -295,6 +310,8 @@ class LaneDetector:
    #Bottom points calculation
     distl = 320-float(lines[0][0][0])
     width_pix = float(lines[1][0][0])-float(lines[0][0][0])
+    if width_pix == 0:
+      return None
     state_y = -(width/2-distl/width_pix*width)
      
     return state_y
