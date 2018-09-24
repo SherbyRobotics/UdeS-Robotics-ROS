@@ -73,7 +73,7 @@ class LaneDetector:
       msg.state_y = state_y
       self.image_pub.publish(msg)
       if self.init == 0:
-        rospy.loginfo("Lane detected: Publishing data.")
+        rospy.loginfo("Lane detected: Publishing data...")
         self.init = 1
 
       cv2.imshow("GRAY", smooth_gray)

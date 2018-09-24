@@ -39,9 +39,17 @@ class camreader(object):
         # First run
         self.load_params( None )
         
-        # Open Camera
-        self.cap = cv2.VideoCapture(1)
+        # Open the desired camera
+        self.camera_used = 1
+        self.cap = cv2.VideoCapture(self.camera_used)
         
+        # Gives info on which camera is starting
+        if self.camera_used == 0:
+          rospy.loginfo('Starting built-in camera...')
+        elif self.camera_used == 1:
+          rospy.loginfo('Starting camera on the first USB port...')
+        elif self.camera_used == 2:
+          rospy.loginfo('Starting camera on the second USB port...') #add number of cameras to your will       
         
         #######################
         # Call back mode
@@ -79,7 +87,7 @@ class camreader(object):
         self.x_down   = rospy.get_param("~x_down", 1)
         
         # Output to terminal
-        rospy.loginfo("[%s] Parameters Loaded " %(self.node_name))
+        #rospy.loginfo("[%s] Parameters Loaded " %(self.node_name))
         
 
 
@@ -103,7 +111,6 @@ class camreader(object):
         
             # Crop
             h,w  = self.camera_IMG.shape[:2]
-            print h,w
             a = self.v_crop # up/down edge crop
             c = self.v_off # horizontal offset
             b = self.h_crop  # Side crop
@@ -123,7 +130,7 @@ class camreader(object):
                 
             self.processed_img = processed_img
                 
-            rospy.loginfo("[%s] : Frame processed " %(self.node_name))
+            #rospy.loginfo("[%s] : Frame processed " %(self.node_name))
             
         else:
             
@@ -144,7 +151,7 @@ class camreader(object):
             
             self.pub_img_raw.publish(img_msg)
             
-            rospy.loginfo("[%s] Camera Frame Published " %(self.node_name))
+            #rospy.loginfo("[%s] Camera Frame Published " %(self.node_name)) 
         
         else:
             

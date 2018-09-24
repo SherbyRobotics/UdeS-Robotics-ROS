@@ -60,16 +60,18 @@ class Observer:
       self.t = rospy.get_rostime()
 
       if self.cam_y == 1000:
-        self.obs2(self.imu_accx,self.imu_accy,self.imu_theta,self.torque,self.delta, self.t)       
+        self.obsB(self.imu_accx,self.imu_accy,self.imu_theta,self.torque,self.delta, self.t)       
       else:
-        self.obs(self.cam_y,self.imu_accx,self.imu_accy,self.imu_theta,self.torque,self.delta, self.t)        
+        self.obsA(self.cam_y,self.imu_accx,self.imu_accy,self.imu_theta,self.torque,self.delta, self.t)        
 
   #######################################################
+  #--------------Observer A, with vision----------------#
+  #######################################################
 
-  def obs(self, cam_y, imu_accx, imu_accy, imu_theta, torque, delta, t):
+  def obsA(self, cam_y, imu_accx, imu_accy, imu_theta, torque, delta, t):
 
      if self.observer == 1:
-        rospy.loginfo('Lane detected: Data based on observer 1 using "cam_y" informations.')
+        rospy.loginfo('Lane detected: Data based on observer A with vision')
         self.observer = 2
 
      a = 0.3
@@ -79,41 +81,29 @@ class Observer:
      v = 1
      dt = (t-self.tlast).to_sec()
  
-  #######################################################
   #---------------------State-Space---------------------#
-  #######################################################
 
      A = np.array([[-c2,0.0,0.0],[0.0,0.0,v],[0.0,0.0,0.0]])
      B = np.array([[c1,0.0],[0.0,0.0],[0.0,v/b]])
      C = np.array([[0.0,1.0,0.0],[-c2,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,1.0]])
      D = np.array([[0.0,0.0],[c1,0.0],[0.0,-v**2],[0.0,0.0]])
-     L = np.array([[0, 0, 0, 0],[1,0,0,0],[0,0,0,0]])
+     L = np.array([[0, 0.4, 0, 0],[1,0,0.3,0],[0,0,0,0]])
 
-
-  #######################################################
   #-----------------------Inputs------------------------#
-  #######################################################
 
      u = np.array([[torque],[delta]])
 
-  #######################################################
   #-----------------------Sensors-----------------------#
-  #######################################################
 
      y = np.array([[cam_y],[imu_accx],[imu_accy],[imu_theta]])
 
-  #######################################################
-  #----------------------Observer-----------------------#
-  #######################################################
-     
+  #----------------------Observer-----------------------# 
      
      x_hat = np.dot(B,u)*dt + np.dot(A,self.x)*dt + self.x + dt*(np.dot(L,y) - np.dot(L,np.dot(D,u)) - np.dot(L,np.dot(C,self.x)))
      self.x = x_hat 
      self.tlast = t
 
-  #######################################################
   #----------------------Publisher----------------------#
-  #######################################################
 
      msg = StatesHat()
      msg.header.stamp = rospy.Time.now()
@@ -122,12 +112,15 @@ class Observer:
      msg.state_theta = x_hat[2]
      self.states_pub.publish(msg)
 
+
+  #######################################################
+  #------------Observer B, without vision---------------#
   #######################################################
 
-  def obs2(self, imu_accx, imu_accy, imu_theta, torque, delta, t):
+  def obsB(self, imu_accx, imu_accy, imu_theta, torque, delta, t):
 
      if self.observer == 2:
-        rospy.loginfo('No lane detected: Data based on observer 2 without vision informations')
+        rospy.loginfo('No lane detected: Data based on observer B without vision')
         self.observer = 1
        
 
@@ -138,9 +131,7 @@ class Observer:
      v = 1
      dt = (t-self.tlast).to_sec()
  
-  #######################################################
   #---------------------State-Space---------------------#
-  #######################################################
 
      A = np.array([[-c2,0.0,0.0],[0.0,0.0,v],[0.0,0.0,0.0]])
      B = np.array([[c1,0.0],[0.0,0.0],[0.0,v/b]])
@@ -148,30 +139,21 @@ class Observer:
      D = np.array([[c1,0.0],[0.0,-v**2],[0.0,0.0]])
      L = np.array([[0,0,0],[0,0,0],[0,0,0]])
 
-  #######################################################
-  #-----------------------Inputs------------------------#
-  #######################################################
+  #----------------------Inputs-------------------------#
 
      u = np.array([[torque],[delta]])
 
-  #######################################################
-  #-----------------------Sensors-----------------------#
-  #######################################################
+  #----------------------Sensors------------------------#
 
      y = np.array([[imu_accx],[imu_accy],[imu_theta]])
 
-  #######################################################
-  #----------------------Observer-----------------------#
-  #######################################################
-     
+  #----------------------Observer-----------------------#   
      
      x_hat = np.dot(B,u)*dt + np.dot(A,self.x)*dt + self.x + dt*(np.dot(L,y) - np.dot(L,np.dot(D,u)) - np.dot(L,np.dot(C,self.x)))
      self.x = x_hat 
      self.tlast = t
 
-  #######################################################
   #----------------------Publisher----------------------#
-  #######################################################
 
      msg = StatesHat()
      msg.header.stamp = rospy.Time.now()
