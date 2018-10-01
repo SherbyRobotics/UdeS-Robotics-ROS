@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>slash-master</name>
+  <name>slash_master</name>
   <version>0.0.0</version>
-  <description>The slash-master package</description>
+  <description>The slash_master package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

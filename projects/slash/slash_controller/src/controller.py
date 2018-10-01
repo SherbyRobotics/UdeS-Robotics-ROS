@@ -31,12 +31,11 @@ class Controller:
 
     self.tlast = rospy.get_rostime()
     self.x = np.array([[0],[0],[0]])
-    self.observer = 1 #Guess that a lane will be detected on the first loop, only has an impact on the LOGINFO
-
+    self.observer = 1 
   #----------------Input initialization--------------------#
 
-    self.tgain = -10
-    self.dgain = 15*3.1416/180
+    self.tgain = 10
+    self.dgain = -1/(2*3.1416)
     self.torque = 0
     self.delta = 0
 
@@ -94,9 +93,9 @@ class Controller:
   #---------------------Params-setup--------------------# 
 
      a = 0.3
-     b = 0.8
-     c1 = 1
-     c2 = 1
+     b = 1
+     c1 = 2
+     c2 = 0.2
      v = 1
      dt = (t-self.tlast).to_sec()
  
@@ -157,7 +156,7 @@ class Controller:
 
 
   #######################################################
-  #------------Observer B, without vision---------------#
+  #------------Observer B, without vision---------------# PAS OBSERVABLE SANS ENCODEURS
   #######################################################
 
   def obsB(self, imu_accx, imu_accy, imu_theta, torque, delta, t):
@@ -166,44 +165,69 @@ class Controller:
         rospy.loginfo('No lane detected: Data based on observer B without vision')
         self.observer = 1
        
+  #---------------------Params-setup--------------------# 
 
      a = 0.3
-     b = 0.8
-     c1 = 1
-     c2 = 1
+     b = 1
+     c1 = 2
+     c2 = 0.2
      v = 1
      dt = (t-self.tlast).to_sec()
  
   #---------------------State-Space---------------------#
 
-     A = np.array([[-c2,0.0,0.0],[0.0,0.0,v],[0.0,0.0,0.0]])
-     B = np.array([[c1,0.0],[0.0,0.0],[0.0,v/b]])
-     C = np.array([[-c2,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,1.0]])
-     D = np.array([[c1,0.0],[0.0,-v**2],[0.0,0.0]])
-     L = np.array([[0,0,0],[0,0,0],[0,0,0]])
-
-  #----------------------Inputs-------------------------#
-
-     u = np.array([[torque],[delta]])
-
-  #----------------------Sensors------------------------#
-
-     y = np.array([[imu_accx],[imu_accy],[imu_theta]])
-
-  #----------------------Observer-----------------------#   
+     A  = np.array([[-c2,0,0],[0,0,v],[0,0,0]])
+     B  = np.array([[c1,0,0],[0,a*v/b,0],[0,v/b,0]])
+     C  = np.array([[-c2,0,0],[0,0,0],[0,0,1]])
+     D  = np.array([[c1,0,0],[0,(v**2)/b,a*v/b],[0,0,0]])
+     Q  = np.array([[100,0,0],[0,10,0],[0,0,10]])
+     R  = np.array([[10,0,0],[0,1000,0],[0,0,1000]])
+     Vd = 0.00001*np.array([[1,0,0],[0,1,0],[0,0,1]])             # Matrix of disturbance covariances on the plant for each state [Vx,y,theta]
+     Vn = np.array([[0.00001,0,0],[0,0.000001,0],[0,0,0.000001]]) # Matrix of sensor noise covariances
      
-     x_hat = np.dot(B,u)*dt + np.dot(A,self.x)*dt + self.x + dt*(np.dot(L,y) - np.dot(L,np.dot(D,u)) - np.dot(L,np.dot(C,self.x)))
+  #--------------------Kalman-Filters-------------------#
+  
+     [obsK, obsX, obsEigs] = self.lqr((np.transpose(A)),(np.transpose(C)),Vd,Vn)
+     obsK = np.transpose(obsK)
+     [ctrK, ctrX, ctrEigs] = self.lqr(A,B,Q,R)
+
+  #-----------------------Inputs------------------------#
+
+     u = np.array([[torque],[delta],[0]])
+
+  #-----------------------Sensors-----------------------#
+
+     y = np.array([[cam_y],[imu_accx],[imu_accy],[imu_theta]])
+
+  #----------------------Observer-----------------------# 
+     
+     x_hat = np.dot(B,u)*dt + np.dot(A,self.x)*dt + self.x + dt*(np.dot(obsK,y) - np.dot(obsK,np.dot(D,u)) - np.dot(obsK,np.dot(C,self.x)))
      self.x = x_hat 
      self.tlast = t
 
+  #---------------States error estimator----------------#
+    
+     states_error = x_hat-self.t_states
+
+  #---------States error to inputs conversion-----------#
+
+     torque = float(np.dot(-ctrK,states_error)[0])
+     delta  = float(np.dot(-ctrK,states_error)[1])
+
   #----------------------Publisher----------------------#
 
-     msg = StatesHat()
-     msg.header.stamp = rospy.Time.now()
-     msg.state_Vx = x_hat[0]
-     msg.state_y= x_hat[1]
-     msg.state_theta = x_hat[2]
-     self.states_pub.publish(msg)
+     estates = StatesHat()
+     estates.header.stamp = rospy.Time.now()
+     estates.state_Vx = x_hat[0]
+     estates.state_y= x_hat[1]
+     estates.state_theta = x_hat[2]
+     self.estates_pub.publish(estates)
+
+     inputs = Twist() # Might need to create a custom msg to have a header
+     #inputs.header.stamp = rospy.Time.now()
+     inputs.linear.x = torque/self.tgain
+     inputs.angular.z = delta/self.dgain
+     self.input_pub.publish(inputs)
 
   ##########################################################
   #--------------Linear-quatratic-regulator----------------#

@@ -76,11 +76,11 @@ class LaneDetector:
         rospy.loginfo("Lane detected: Publishing data...")
         self.init = 1
 
-      cv2.imshow("GRAY", smooth_gray)
-      cv2.imshow("Canny", edges)
-      cv2.imshow("ROI", regions)
-      cv2.imshow("ROI ori", regions_ori)
-      cv2.imshow("Lines", img_line)
+      #cv2.imshow("GRAY", smooth_gray)
+      #cv2.imshow("Canny", edges)
+      #cv2.imshow("ROI", regions)
+      #cv2.imshow("ROI ori", regions_ori)
+      #cv2.imshow("Lines", img_line)
       cv2.imshow("Final", final_img)
       cv2.waitKey(3)      
       #cv2.imshow("Filtered",white_yellow)

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>slash-teleop</name>
+  <name>slash_teleop</name>
   <version>0.0.0</version>
-  <description>The slash-teleop package</description>
+  <description>The slash_teleop package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

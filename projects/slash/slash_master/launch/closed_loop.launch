@@ -18,7 +18,7 @@
   <node pkg="slash_vision" type="lane_detec.py" name="CAM_treatments" output="screen">
   </node>
 
-  <node pkg="slash_controller" type="controller.py" name="OBSERVER" output="screen">
+  <node pkg="slash_controller" type="controller.py" name="CONTROLLER" output="screen">
   </node>
 
 </launch>
