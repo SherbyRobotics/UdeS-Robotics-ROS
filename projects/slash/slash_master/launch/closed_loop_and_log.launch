@@ -21,7 +21,10 @@
   <node pkg="slash_controller" type="controller.py" name="CONTROLLER" output="screen">
   </node>
 
-  <node pkg="slash_datalogging" type="datalog.py" name="DATA_LOGGER" output="screen">
-  </node>
+  <arg name="record_msgs" default="true" />
+
+  <node pkg="rosbag" type="record" name="rosbag_record"
+       args="record -o /home/nvidia/catkin_ws/src/UdeS-Robotics-ROS/projects/slash/slash_datalogging/bagfiles/DataBag.bag -a "
+       if="$(arg record_msgs)" />
 
 </launch>

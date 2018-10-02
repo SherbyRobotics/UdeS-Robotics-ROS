@@ -1,0 +1,13 @@
+<launch>
+
+  <arg name="bagName" value="$(arg BagName)" />
+  <arg name="xlsxName" value="$(arg XlsxName)" />
+
+  <node pkg="rosbag" type="play" name="rosbag_record" args="--clock /home/nvidia/catkin_ws/src/UdeS-Robotics-ROS/projects/slash/slash_datalogging/bagfiles/$(arg bagName).bag" required="true">
+  </node>
+
+  <node pkg="slash_datalogging" type="bag_to_xlsx_converter.py" name="CONVERTER" output="screen">
+    <param name ="xlsxName" value= "$(arg xlsxName)" />
+  </node>
+
+</launch>

@@ -10,11 +10,12 @@ from xlwt import Workbook
 import rospy
 import time
 
-class DataLogger:
+class Converter:
   ##########################################################
 
   def __init__(self):
 
+    self.xlsxName = rospy.get_param("~xlsxName","Data")
     self.wb = Workbook()
     self.sheet1 = self.wb.add_sheet('Sheet1')
     self.sheet1.write(0,0,'Time (secs)')
@@ -112,17 +113,17 @@ class DataLogger:
       self.sheet1.write(self.line,9,self.e_Vx)
       self.sheet1.write(self.line,10,self.e_y)
       self.sheet1.write(self.line,11,self.e_theta)
-      self.wb.save('/home/nvidia/catkin_ws/src/UdeS-Robotics-ROS/projects/slash/slash_datalogging/src/DataLogging.xlsx')
+      
+      self.wb.save('/home/nvidia/catkin_ws/src/UdeS-Robotics-ROS/projects/slash/slash_datalogging/xlsxfiles/'+str(self.xlsxName)+'.xlsx')
+      
 
 
   ##########################################################   
 
 if __name__ == '__main__': 
      rospy.init_node('DATA LOGGER',anonymous=False)
-     node = DataLogger()
+     node = Converter()
      rospy.spin()
-
-      #Trouver maniere pour runner cette ligne en exitant
 
 
 
