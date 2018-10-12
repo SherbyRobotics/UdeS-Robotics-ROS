@@ -1,20 +1,18 @@
 <launch>
 
-  <node pkg="slash-teleop" type="slash_teleop.py" name="slash_teleop">
+  <node pkg="slash_teleop" type="slash_teleop.py" name="slash_teleop">
   </node>
 
   <node pkg="joy" type="joy_node" name="joystick" >
     <param name="deadzone" value="0.0" />
   </node>
 
-  <node pkg="rosserial_python" type="serial_node.py" name="arduino_Mega" >
+  <node pkg="rosserial_python" type="serial_node.py" name="arduino_ESC" >
     <param name="port" value="/dev/ttyACM0"/>
-    <param name="baud" value="57600"/>
   </node>
 
- <node pkg="rosserial_python" type="serial_node.py" name="arduino_Uno" >
+ <node pkg="rosserial_python" type="serial_node.py" name="arduino_ENCODERS" >
     <param name="port" value="/dev/ttyACM1"/>
-    <param name="baud" value="57600"/>
   </node>
 
 </launch>

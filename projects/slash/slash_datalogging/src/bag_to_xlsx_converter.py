@@ -15,28 +15,8 @@ class Converter:
 
   def __init__(self):
 
-    self.xlsxName = rospy.get_param("~xlsxName","Data")
-    self.wb = Workbook()
-    self.sheet1 = self.wb.add_sheet('Sheet1')
-    self.sheet1.write(0,0,'Time (secs)')
-    self.sheet1.write(0,1,'Time (nsecs)')
-    self.sheet1.write(0,2,'Data camera (y)')
-    self.sheet1.write(0,3,'Data imu (acc_x)')
-    self.sheet1.write(0,4,'Data imu (acc_y)')
-    self.sheet1.write(0,5,'Data imu (theta)')
-    self.sheet1.write(0,6,'Data cmd (torque)')
-    self.sheet1.write(0,7,'Data cmd (delta)')
-    self.sheet1.write(0,8,'Data feedback')
-    self.sheet1.write(0,9,'Estimated states (Vx)')
-    self.sheet1.write(0,10,'Estimated states (y)')
-    self.sheet1.write(0,11,'Estimated states (theta)')
-    for i in range (0,3):
-      self.sheet1.col(i).width = 256*14
-    for i in range (2,9):
-      self.sheet1.col(i).width = 256*17
-    for i in range (9,12):
-      self.sheet1.col(i).width = 256*20
-
+    self.createWorkbook()
+    self.createWbHeader()
     self.t_init = rospy.get_rostime()
 
     self.image_sub = rospy.Subscriber("ycam_msg",CamState,self.cam_receiver)
@@ -69,7 +49,7 @@ class Converter:
       self.imu_accx  = imu.state_accx
       self.imu_accy  = imu.state_accy
       self.imu_theta = imu.state_theta
-      self.dataLogging()   
+      self.dataLogging() #Log infos at the rate of the fastest sensor. Move that line if needed.   
 
   ##########################################################
   
@@ -93,6 +73,37 @@ class Converter:
       self.e_y       = estates.state_y
       self.e_theta   = estates.state_theta     
 
+
+  ##########################################################
+
+  def createWorkbook(self):
+
+    self.xlsxName = rospy.get_param("~xlsxName","Data")
+    self.wb = Workbook()
+
+  ##########################################################
+
+  def createWbHeader(self):
+
+    self.sheet1 = self.wb.add_sheet('Sheet1')
+    self.sheet1.write(0,0,'Time (secs)')
+    self.sheet1.write(0,1,'Time (nsecs)')
+    self.sheet1.write(0,2,'Data camera (y)')
+    self.sheet1.write(0,3,'Data imu (acc_x)')
+    self.sheet1.write(0,4,'Data imu (acc_y)')
+    self.sheet1.write(0,5,'Data imu (theta)')
+    self.sheet1.write(0,6,'Data cmd (torque)')
+    self.sheet1.write(0,7,'Data cmd (delta)')
+    self.sheet1.write(0,8,'Data feedback')
+    self.sheet1.write(0,9,'Estimated states (Vx)')
+    self.sheet1.write(0,10,'Estimated states (y)')
+    self.sheet1.write(0,11,'Estimated states (theta)')
+    for i in range (0,3):
+      self.sheet1.col(i).width = 256*14
+    for i in range (2,9):
+      self.sheet1.col(i).width = 256*17
+    for i in range (9,12):
+      self.sheet1.col(i).width = 256*20
 
   ##########################################################
   
