@@ -82,10 +82,10 @@ signed long encoder2count = 0;
 
 // Pins for outputs
 const int ser = 9;   // Servo 
-const int motA = 5;  // Motor A
-const int motB = 6;  // Motor B
-const int dirA = 4;  // Direction motor A
-const int dirB = 3;  // Direction motor B
+const int motA = 6;  // Motor R
+const int motB = 5;  // Motor L
+const int dirA = 4;  // Direction motor R
+const int dirB = 3;  // Direction motor L
 
 // Hardware min-zero-max range for the steering servo and the Cytron drive
 // arduino pwm-servo lib unit = 0-180 deg angle range corresponding to 544-2400 microseconds pulse-witdh
@@ -306,6 +306,14 @@ void setup(){
   pinMode(motB, OUTPUT);
   pinMode(dirA, OUTPUT);
   pinMode(dirB, OUTPUT);
+   // Initialize Steering and Drive cmd to neutral
+  digitalWrite(dirA, HIGH);
+  digitalWrite(dirB, HIGH);
+  // Init Cytron Drive
+  int cytron_pwm = 0;
+  analogWrite(motA,cytron_pwm);
+  analogWrite(motB,cytron_pwm);
+  steeringServo.write(pwm_zer_ser);
   
   // Init PWM output Pins
   steeringServo.attach(ser); 
@@ -325,14 +333,6 @@ void setup(){
   nodeHandle.advertise(chatter_cmd);
   nodeHandle.advertise(chatter_encd);
   
-  // Initialize Steering and Drive cmd to neutral
-  digitalWrite(dirA, HIGH);
-  digitalWrite(dirB, HIGH);
-  // Init Cytron Drive
-  int cytron_pwm = 0;
-  analogWrite(motA,cytron_pwm);
-  analogWrite(motB,cytron_pwm);
-  steeringServo.write(pwm_zer_ser);
   
   //
   delay(3000) ;

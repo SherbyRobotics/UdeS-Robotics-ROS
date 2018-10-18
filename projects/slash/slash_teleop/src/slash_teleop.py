@@ -28,14 +28,14 @@ class teleop(object):
         cmd_msg = Twist()
         
         # if trigger is active
-        if ( joy_msg.buttons[6] > 0 ):
+        if ( joy_msg.buttons[4] > 0 ):
             
             enable = True
 
 
             # For logitech joystick
             #mapping button --> cmd
-            cmd_msg.linear.x = joy_msg.axes[3]*-1
+            cmd_msg.linear.x = joy_msg.axes[4]*-1
             #cmd_msg.linear.y = 0
             #cmd_msg.linear.z = 0            
             
