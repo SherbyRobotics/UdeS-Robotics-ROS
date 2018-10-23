@@ -16,11 +16,11 @@ class propulsion(object):
         
         self.verbose = False
 
-        # Init subscribers
-        self.sub_cmd     = rospy.Subscriber("cmd_vel", Twist, self.cmdRead, queue_size=1)                          
+        # Init subscribers  
+        self.sub_teleop  = rospy.Subscriber("cmd_vel", Twist, self.planRead, queue_size=1)                      
         self.sub_planif  = rospy.Subscriber("planif", Twist, self.planRead, queue_size=1)
         self.sub_encd    = rospy.Subscriber("encoders_counts", Twist , self.encdRead, queue_size=1)
-        self.sub_pwm     = rospy.Subscriber("arduino_debug_feedback", Twist, self.pwmRead, queue_size=1)
+        #self.sub_pwm     = rospy.Subscriber("arduino_debug_feedback", Twist, self.pwmRead, queue_size=1)
 
         # Init publisher    
         self.pub_cmd     = rospy.Publisher("cmd_prop", Twist , queue_size=1)
@@ -56,9 +56,6 @@ class propulsion(object):
     #######################################
 
     def getparam(self):
-        
-        # Init CtrlChoice
-        self.CtrlChoice =  rospy.get_param("~CtrlChoice",  0)
 
         # Init teleop related params
         self.cmd2volts = rospy.get_param("~batteryV", 8.4) #cmd_vel range from -1 to 1 and the battery pack is a 8.4V
@@ -81,54 +78,26 @@ class propulsion(object):
     #------------Read commands------------#
     #######################################
 
-    def cmdRead(self,cmd):
+    def planRead(self,cmd):
 
       #Get params function
       self.getparam()
    
       #Read commands
-      cmd_Motors = cmd.linear.x
+      cmd_MotorA = cmd.linear.x
+      cmd_MotorB = cmd.linear.y
       cmd_Servo  = cmd.angular.z
 
-      #Read the CtrlChoice determined either by the operator or the planif algorithm
-      self.CtrlChoice =  rospy.get_param("~CtrlChoice",  0)
+      #Chose CtrlChoice
+      self.CtrlChoice = cmd.linear.z
 
-      #Call the right function depending on the CtrlChoice
-      if (self.CtrlChoice == 0):                #Teleop openloop in Volts
-        msg_M, msg_S = self.CC0(cmd_Motors, cmd_Servo)
-      elif (self.CtrlChoice == 1):              #Teleop openloop in m/s estimated
-        msg_M, msg_S = self.CC1(cmd_Motors, cmd_Servo)
-
-      #Call the msg publisher function
-      self.msgPub(msg_M,msg_M,0,0,msg_S) 
-
-    #######################################
-    #------Teleop openloop in Volts-------#
-    #######################################
-
-    def CC0(self, cmd_M, cmd_S):
-
-      #Convert cmd_vel to motor voltage
-      voltM = cmd_M*self.cmd2volts
-
-      #Convert cmd_S to servo angle in rad
-      radS  = cmd_S*self.cmd2rad
-
-      return voltM, radS
-
-    #######################################
-    #--------Teleop openloop in m/s-------#
-    #######################################
-
-    def CC1(self, cmd_M, cmd_S):
-
-      #Convert cmd_vel to motor voltage
-      velM = cmd_M*self.cmd2vel
-
-      #Convert cmd_S to servo angle in rad
-      radS  = cmd_S*self.cmd2rad
-
-      return velM, radS  
+      #For openloop controls, simply pass the info from planif to prop
+      if (self.CtrlChoice == 0 or self.CtrlChoice == 1):                
+        msg_MA     = cmd_MotorA     
+        msg_MB     = cmd_MotorB
+        cmd_MotorA = 0          #No targeted value, only write the teleop info
+        cmd_MotorB = 0         
+        msg_S      = cmd_Servo
 
     ##########################################################################################
     #                                                                                        #
@@ -140,24 +109,14 @@ class propulsion(object):
     #------------Read commands------------#
     #######################################  
 
-    def planRead(self,cmd):
-   
-      #Read commands
-      cmd_MotorA = cmd.linear.x
-      cmd_MotorB = cmd.linear.y
-      cmd_Servo  = cmd.angular.z
-
-      #Read the CtrlChoice determined either by the operator or the planif algorithm
-      self.CtrlChoice =  rospy.get_param("~CtrlChoice",  0)
-
       #Call the right function depending on the CtrlChoice
-      if (self.CtrlChoice == 2):                #Planif closedloop in A
-        msg_MA,msg_MB,msg_S = self.CC2(cmd_MotorA, cmd_MotorB, cmd_Servo)
+      elif (self.CtrlChoice == 2):                #Planif closedloop in A
+        msg_MA,msg_MB,msg_S = self.CC2(cmd_MotorA, cmd_MotorB)
       elif (self.CtrlChoice == 3):              #Planif closedloop in m
-        msg_MA,msg_MB,msg_S = self.CC3(cmd_MotorA, cmd_MotorB, cmd_Servo)
+        msg_MA,msg_MB,msg_S = self.CC3(cmd_MotorA, cmd_MotorB)
       elif (self.CtrlChoice == 4):              #Planif closedloop in m/s
-        msg_MA,msg_MB,msg_S = self.CC4(cmd_MotorA, cmd_MotorB, cmd_Servo)
-
+        msg_MA,msg_MB,msg_S = self.CC4(cmd_MotorA, cmd_MotorB)
+      
       #Call the msg publisher function
       self.msgPub(msg_MA,msg_MB,cmd_MotorA,cmd_MotorB,msg_S)
 
@@ -165,7 +124,7 @@ class propulsion(object):
     #-------Planif closedloop in A--------#
     #######################################
 
-    def CC2(self, cmd_MA, cmd_MB, cmd_S):
+    def CC2(self, cmd_MA, cmd_MB):
 
       #Set the targeted current from the planif algo
       amp_tA = cmd_MA
@@ -176,15 +135,15 @@ class propulsion(object):
       #ampMB = (ampM_tB - m_ampB)*self.KpCB                ***Where Kp is the proportional gain and m_amp is the measured current***
 
       #Convert cmd_S to servo angle in rad
-      radS  = cmd_S*self.cmd2rad
+      radS = cmd_Servo*self.cmd2rad
 
-      return ampM_tA, ampM_tB, radS        #****Change to ampMA and ampMB once we have the need hardware****
+      return ampM_tA, ampM_tB, radS       #****Change to ampMA and ampMB once we have the need hardware****
 
     #######################################
     #-------Planif closedloop in m--------#              ***Might be useful to add a speed limitor here***
     #######################################
 
-    def CC3(self, cmd_MA, cmd_MB, cmd_S):
+    def CC3(self, cmd_MA, cmd_MB):
 
       #Set the targeted position (m) from the planif algo
       pos_tA = cmd_MA
@@ -196,10 +155,10 @@ class propulsion(object):
 
       #Closedloop   
       posMA = (pos_tA - m_posA)*self.KpPA      
-      posMB = (pos_tB - m_posB)*self.KpPB              
+      posMB = (pos_tB - m_posB)*self.KpPB  
 
       #Convert cmd_S to servo angle in rad
-      radS  = cmd_S*self.cmd2rad
+      radS = cmd_Servo*self.cmd2rad            
 
       return posMA, posMB, radS  
 
@@ -207,7 +166,7 @@ class propulsion(object):
     #------Planif closedloop in m/s-------#
     #######################################
 
-    def CC4(self, cmd_MA, cmd_MB, cmd_S):
+    def CC4(self, cmd_MA, cmd_MB):
 
       #Set the targeted velocity (m/s) from the planif algo
       vel_tA = cmd_MA
@@ -219,12 +178,12 @@ class propulsion(object):
 
       #Closedloop   
       velMA = (vel_tA - m_velA)*self.KpVA      
-      velMB = (vel_tB - m_velB)*self.KpVB              
+      velMB = (vel_tB - m_velB)*self.KpVB     
 
       #Convert cmd_S to servo angle in rad
-      radS  = cmd_S*self.cmd2rad
+      radS = cmd_Servo*self.cmd2rad         
 
-      return velMA, velMB, radS  
+      return velMA, velMB, radS 
 
     ##########################################################################################
     #                                                                                        #
@@ -248,7 +207,33 @@ class propulsion(object):
       # Publish cmd msg
       self.pub_cmd.publish(cmd_prop)
          
+    ##########################################################################################
+    #                                                                                        #
+    #                             *****TORQUE ESTIMATION*****                                # 
+    #                                                                                        #
+    ##########################################################################################
 
+    #def torque_calc(self):   #Might be interesting to compute torque using a current sensor and then use a Kalman Filter to have a better Torque estimate
+
+      # Estimate Torque at each wheel based on current sensors and equation: Torque = i*Kt*gearRatio
+      #self.TA_c = self.currentA*self.Kt*self.gearR
+      #self.TB_c = self.currentB*self.Kt*self.gearR
+      
+      # Estimate Torque at each wheel based on equation: Torque = ((Vpwm-Vfcem)/R)*Kt*gearRatio
+      #self.TA_model = (self.pwmA*self.Hbridge-self.velA*self.Kfcem)/self.R*self.Kt*self.gearR
+      #self.TB_model = (self.pwmB*self.Hbridge-self.velB*self.Kfcem)/self.R*self.Kt*self.gearR
+      
+      # Not using a kalman filter right now, just a mean
+      #self.TA_K = (self.TA_c+self.TA_model)/2
+      #self.TB_K = (self.TB_c+self.TB_model)/2
+
+      #If alpha is equal to 0, T-Fr = I*alpha ---> T = Fr ---> T = N*u
+      #if (self.accA<0.1 and self.accA>-0.1):                          
+        #self.uA = self.TA_K/(self.m*self.g*self.b/(2*(self.a+self.b)))   #Based on car DCL on flat surface and torque obtained from Kalman filter
+
+      #if (self.accB<0.1 and self.accB>-0.1): 
+        #self.uB = self.TB_K/(self.m*self.g*self.b/(2*(self.a+self.b)))
+           
     ##########################################################################################
     #                                                                                        #
     #                       *****ENCODERS FEEDBACK FROM ARDUINO*****                         # 
@@ -339,6 +324,9 @@ class propulsion(object):
         self.posA, self.posB = self.pos(encdA, encdB)
         self.velA, self.velB = self.vel(self.posA, self.posB, t_now)
         self.accA, self.accB = self.acc(self.velA, self.velB, t_now)
+
+        # Once the velocity and the acceleration is up to date, compute the estimated Torque and friction coefficient
+        #self.torque_calc()
 
         # Msg
         encd_info.linear.x = self.posA

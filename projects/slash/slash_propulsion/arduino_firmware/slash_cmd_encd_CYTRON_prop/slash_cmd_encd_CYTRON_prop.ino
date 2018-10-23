@@ -242,23 +242,39 @@ double cmd2pwm (double cmd, double slope, int pmw_min, int pwm_zer, int pwm_max)
 
 ///////////////////////////////////////////////////////////////////
 
+// Direction function (Low-->Backward or High-->Forward)
+int lowHigh(double cmd) {
+  int forward;
+  
+  if (cmd >= 0) {
+    digitalWrite(dirA, HIGH);
+    digitalWrite(dirB, HIGH);
+    int forward = 1;
+    return forward;
+  }
+  
+  if (cmd < 0) {
+    digitalWrite(dirA, LOW);
+    digitalWrite(dirB, LOW);
+    int forward = 0;
+    return forward; 
+  }
+   
+}///////////////////////////////////////////////////////////////////
+
 // Convertion function: Command --> PWM Motors
 double cmd2cyt(double cmd, float from_min, float from_max, int to_min, int to_max) {
   float pwm_f;
   int pwm;
   
   if (cmd >= 0) {
-    digitalWrite(dirA, HIGH);
-    digitalWrite(dirB, HIGH);
     float pwm_f = cmd*to_max/from_max;
     int pwm = (int) pwm_f;
     return pwm;
   }
   
   if (cmd < 0) {
-    digitalWrite(dirA, LOW);
-    digitalWrite(dirB, LOW);
-    float pwm_f = cmd*to_max/from_max;
+    float pwm_f = -cmd*to_max/from_max;
     int pwm = (int) pwm_f;
     return pwm; 
   }
@@ -268,7 +284,7 @@ double cmd2cyt(double cmd, float from_min, float from_max, int to_min, int to_ma
 
 ///////////////////////////////////////////////////////////////////
 
-long pubWrite(int cytron_pwmA, int cytron_pwmB, int ser_pwm, int CtrlChoice){
+long pubWrite(int cytron_pwmA, int cytron_pwmB, int ser_pwm, int forwardA, int forwardB, int CtrlChoice){
   
   // Write PWM for the steering servo and both motors
   steeringServo.write(ser_pwm) ;
@@ -276,10 +292,12 @@ long pubWrite(int cytron_pwmA, int cytron_pwmB, int ser_pwm, int CtrlChoice){
   analogWrite(motB,cytron_pwmB);
 
   // Debug feedback
-  cmdPub.linear.x = cytron_pwmA;
-  cmdPub.linear.y = cytron_pwmB;
-  cmdPub.linear.z = CtrlChoice;
-  cmdPub.angular.z = ser_pwm;
+  cmdPub.linear.x = cytron_pwmA;     //PWM Motor A
+  cmdPub.linear.y = cytron_pwmB;     //PWM Motor B
+  cmdPub.linear.z = CtrlChoice;      //CtrlChoice (given by the propulsion algo)
+  cmdPub.angular.x = forwardA;       //Direction A
+  cmdPub.angular.y = forwardB;       //Direction B
+  cmdPub.angular.z = ser_pwm;        //PWM Servo
   chatter_cmd.publish( &cmdPub );
   
 }
@@ -303,38 +321,46 @@ void cmdCallback ( const geometry_msgs::Twist&  twistMsg )
   double cytron_cmdA = twistMsg.linear.x; //Read motor A cmd 
   double cytron_cmdB = twistMsg.linear.y; //Read motor B cmd
 
+  float from_min     = 0;
+
   // Call the right control loop
   // Openloop control in volts (CC0)
   if (CtrlChoice == 0){
-    float from_min = 0;
-    float from_max = batteryV;
+    float from_max    = batteryV;
+    int forwardA      = lowHigh(cytron_cmdA);
+    int forwardB      = lowHigh(cytron_cmdB);
     int cytron_pwmA   = cmd2cyt(cytron_cmdA, from_min, from_max, pwm_min_cmd, pwm_max_cmd);
-    int cytron_pwmB = cytron_pwmA;
-    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm, CtrlChoice);
+    int cytron_pwmB   = cmd2cyt(cytron_cmdB, from_min, from_max, pwm_min_cmd, pwm_max_cmd);
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
   }
   // Openloop control in m/s (CC1)
   if (CtrlChoice == 1){
-    float from_min = 0;
-    float from_max = vel_max;
+    float from_max    = vel_max;
+    int forwardA      = lowHigh(cytron_cmdA);
+    int forwardB      = lowHigh(cytron_cmdB);
     int cytron_pwmA   = cmd2cyt(cytron_cmdA, from_min, from_max, pwm_min_cmd, pwm_max_cmd);
-    int cytron_pwmB = cytron_pwmA;
-    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm, CtrlChoice);
+    int cytron_pwmB   = cmd2cyt(cytron_cmdB, from_min, from_max, pwm_min_cmd, pwm_max_cmd);
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
   }
   // Closedloop control for position in m (CC3)
   if (CtrlChoice == 3){
-    float targA     = twistMsg.angular.x; //Read the targeted position of motor A
-    float targB     = twistMsg.angular.y; //Read the targeted position of motor B
+    float targA       = twistMsg.angular.x; //Read the targeted position of motor A
+    float targB       = twistMsg.angular.y; //Read the targeted position of motor B
+    int forwardA      = lowHigh(cytron_cmdA);
+    int forwardB      = lowHigh(cytron_cmdB);
     int cytron_pwmA   = cmd2cyt(cytron_cmdA, from_min, targA, pwm_min_cmd, pwm_max_cmd/2); //pwm_max_cmd is divided by 2 to ensure the wheels won't slip at the beginning!**Might need to limit the acceleration**
     int cytron_pwmB   = cmd2cyt(cytron_cmdB, from_min, targB, pwm_min_cmd, pwm_max_cmd/2);
-    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm, CtrlChoice);
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
   }
   // Closedloop control for velocity in m/s (CC4)
   if (CtrlChoice == 4){
-    float targA     = twistMsg.angular.x; //Read the targeted velocity for motor A
-    float targB     = twistMsg.angular.y; //Read the targeted velocity for motor B
+    float targA       = twistMsg.angular.x; //Read the targeted velocity for motor A
+    float targB       = twistMsg.angular.y; //Read the targeted velocity for motor B
+    int forwardA      = lowHigh(cytron_cmdA);
+    int forwardB      = lowHigh(cytron_cmdB);
     int cytron_pwmA   = cmd2cyt(cytron_cmdA, from_min, targA, pwm_min_cmd, pwm_max_cmd); //**Might need to limit the acceleration**
     int cytron_pwmB   = cmd2cyt(cytron_cmdB, from_min, targB, pwm_min_cmd, pwm_max_cmd);
-    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm, CtrlChoice);
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
   }
 }
 

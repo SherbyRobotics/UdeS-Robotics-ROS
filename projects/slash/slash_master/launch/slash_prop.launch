@@ -1,6 +1,6 @@
 <launch>
 
-  <node pkg="slash_teleop" type="slash_teleop.py" name="slash_teleop">
+  <node pkg="slash_teleop" type="slash_dual_teleop.py" name="slash_teleop">
   </node>
 
   <node pkg="joy" type="joy_node" name="joystick" >
@@ -12,7 +12,6 @@
   </node>
 
   <node pkg="slash_propulsion" type="propulsion.py" name="PROPULSION" >
-    <param name="CtrlChoice" value="1" />
   </node>
 
 </launch>
