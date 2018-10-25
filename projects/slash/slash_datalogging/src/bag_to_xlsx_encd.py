@@ -22,8 +22,20 @@ class Converter:
     self.velB      = 0
     self.accA      = 0
     self.accB      = 0
-    self.encd_sub = rospy.Subscriber("encd_info",Twist, self.encd_receiver)
- 
+    self.encd_sub = rospy.Subscriber("encd_info",Twist, self.encd_receiver, queue_size=1)
+    self.encd_sub = rospy.Subscriber("cmd_prop",Twist, self.cmd_receiver, queue_size=1)
+
+  ##########################################################
+
+  def cmd_receiver(self,data):
+      self.t_cmd = rospy.get_rostime()
+      self.cmdA = data.linear.x
+      self.cmdB = data.linear.y
+      self.CC   = data.linear.z
+      self.tarA = data.angular.x
+      self.tarB = data.angular.y
+      self.serv = data.angular.z 
+
   ##########################################################
 
   def encd_receiver(self,data):
@@ -32,7 +44,6 @@ class Converter:
       self.velA = data.linear.y
       self.accA = data.linear.z
       self.posB = data.angular.x
-      print(self.posB)
       self.velB = data.angular.y
       self.accB = data.angular.z
       self.dataLogging()
@@ -77,6 +88,9 @@ class Converter:
       self.sheet1.write(self.line,5,self.posB)
       self.sheet1.write(self.line,6,self.velB)
       self.sheet1.write(self.line,7,self.accB)
+      self.sheet1.write(self.line,8,self.cmdA)
+      self.sheet1.write(self.line,9,self.tarA)
+      self.sheet1.write(self.line,10,self.CC)
 
       
       self.wb.save('/home/sherbyrobotics/catkin_ws/src/UdeS-Robotics-ROS/projects/slash/slash_datalogging/xlsxfiles/'+str(self.xlsxName)+'.xlsx')

@@ -32,6 +32,7 @@ class propulsion(object):
         # Init time
         self.tp_last = rospy.get_time()   #Set first time used for velocity calculation to 0
         self.tv_last = rospy.get_time()   #Set first time used for acceleration calculation to 0
+        self.tCC5_last = rospy.get_time()
 
         # Init encoders related params
         self.encdA_last = 0                  
@@ -54,7 +55,7 @@ class propulsion(object):
 
     ##########################################################################################
     #                                                                                        #
-    #            *****COMMANDS FROM TELEOPERATION FOR CTRLCHOICE 0 AND 1*****                # 
+    #             *****READ COMMANDS AND LOAD PARAMS FOR ALL CTRLCHOICES*****                # 
     #                                                                                        #
     ##########################################################################################
 
@@ -76,27 +77,41 @@ class propulsion(object):
         self.gearR    = rospy.get_param("~gearR", 10) #Gear ratio
         self.KpCA     = rospy.get_param("~KpCA", 5)   #Proportional gain for motor A current control  ****Needs to be tuned and/or add Ki Kd****
         self.KpCB     = rospy.get_param("~KpCB", 5)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
-        self.KpPA     = rospy.get_param("~KpPA", 5)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
+        self.KpPA     = rospy.get_param("~KpPA", 0.3)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
         self.KpPB     = rospy.get_param("~KpPB", 5)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
-        self.KpVA     = rospy.get_param("~KpVA", 0.3)   #Proportional gain for motor A velocity control  ****Needs to be tuned and/or add Ki Kd****
+        self.KpVA     = rospy.get_param("~KpVA", 0.25)   #Proportional gain for motor A velocity control  ****Needs to be tuned and/or add Ki Kd****
+        self.KiVA     = rospy.get_param("~KpVA", 0.25)   #Proportional gain for motor A velocity control  ****Needs to be tuned and/or add Ki Kd****
         self.KpVB     = rospy.get_param("~KpVB", 0.5)   #Proportional gain for motor B velocity control  ****Needs to be tuned and/or add Ki Kd****
+
+        # Init closed loop CC5
+        self.tCC5_last   = rospy.get_time()
+        self.I_last      = 0
+        self.errorA_last = self.cmd_MotorA
 
     #######################################
     #------------Read commands------------#
     #######################################
 
     def planRead(self,cmd):
-
-      #Get params function
-      self.getparam()
    
       #Read commands
       self.cmd_MotorA = cmd.linear.x
       self.cmd_MotorB = cmd.linear.y
       self.cmd_Servo  = cmd.angular.z
 
+      #Get params function
+      self.getparam()
+
       #Chose CtrlChoice
       self.CtrlChoice = cmd.linear.z
+
+    ##########################################################################################
+    #                                                                                        #
+    #            *****COMMANDS FROM PLANIF ALGO FOR CTRLCHOICE 2, 3, 4 & 5*****              # 
+    #                                                                                        #
+    ##########################################################################################
+
+    def writeCmd(self):
 
       #For openloop controls, simply pass the info from planif to prop
       if (self.CtrlChoice == 0 or self.CtrlChoice == 1):                
@@ -123,8 +138,10 @@ class propulsion(object):
         msg_MA,msg_MB,msg_S = self.CC3(self.cmd_MotorA, self.cmd_MotorB, self.cmd_Servo)
       elif (self.CtrlChoice == 4):              #Planif closedloop in m/s
         msg_MA,msg_MB,msg_S = self.CC4(self.cmd_MotorA, self.cmd_MotorB, self.cmd_Servo)
-      elif (self.CtrlChoice == 5):              #Planif closedloop in m/s
+      elif (self.CtrlChoice == 5):              #Planif closedloop in rad/s
         msg_MA,msg_MB,msg_S = self.CC5(self.cmd_MotorA, self.cmd_MotorB, self.cmd_Servo)
+      elif (self.CtrlChoice == 6):              #Planif closedloop in rad
+        msg_MA,msg_MB,msg_S = self.CC6(self.cmd_MotorA, self.cmd_MotorB, self.cmd_Servo)
       
       #Call the msg publisher function
       self.msgPub(msg_MA,msg_MB,self.cmd_MotorA,self.cmd_MotorB,msg_S)
@@ -200,20 +217,57 @@ class propulsion(object):
 
     def CC5(self, cmd_MA, cmd_MB, cmd_Servo):
 
-      #Set the targeted velocity (m/s) from the planif algo
+      # Time
+      t_now = rospy.get_time()
+
+      #Set the targeted velocity (rad/s) from the planif algo
       rad_tA = cmd_MA
       rad_tB = cmd_MB
 
-      #Closedloop   
-      velMA = (rad_tA - self.velB)*self.KpVA      
+      #Closedloop error
+      if ((rad_tA-self.velB)>0):   
+        errorA = rad_tA - self.velB     
+      else:
+        errorA = 0
+
+      #Proportional command
+      P     = errorA*self.KpVA 
+     
+
+      I_now = ((self.errorA_last*self.KiVA+errorA*self.KiVA)*(t_now-self.tCC5_last))/2
+      I_tot = I_now+self.I_last
+      velMA = P+I_tot
+   
       velMB = (rad_tB - self.velB)*self.KpVB 
-      print(self.velB)
-      print(velMB)    
 
       #Convert cmd_S to servo angle in rad
-      radS = cmd_Servo*self.cmd2rad         
+      radS = cmd_Servo*self.cmd2rad
+
+      # Re-init
+      self.I_last      = I_tot
+      self.tCC5_last   = t_now
+      self.errorA_last = errorA         
 
       return velMA, velMB, radS 
+
+    #######################################
+    #------Planif closedloop in rad-------#              ***Might be useful to add a speed limitor here***
+    #######################################
+
+    def CC6(self, cmd_MA, cmd_MB, cmd_Servo):
+
+      #Set the targeted position (rad) from the planif algo
+      pos_tA = cmd_MA
+      pos_tB = cmd_MB
+
+      #Closedloop   
+      posMA = (pos_tA - self.posB)*self.KpPA      
+      posMB = (pos_tB - self.posB)*self.KpPB  
+
+      #Convert cmd_S to servo angle in rad
+      radS = cmd_Servo*self.cmd2rad            
+
+      return posMA, posMB, radS  
 
     ##########################################################################################
     #                                                                                        #
@@ -303,7 +357,7 @@ class propulsion(object):
           velB = dposB/dT
 
           #Low-pass filter
-          a = dT/(20*dT)
+          a = dT/(40*dT)
           velA_F = (1-a)*self.velA_Flast+a*velA
           velB_F = (1-a)*self.velB_Flast+a*velB
 
@@ -341,7 +395,7 @@ class propulsion(object):
           accA = dvelA/dT
           accB = dvelB/dT
           #Low-pass filter
-          z = dT/(20*dT)
+          z = dT/(40*dT)
           accA_F = (1-z)*self.accA_Flast+z*accA
           accB_F = (1-z)*self.accB_Flast+z*accB
 
@@ -375,6 +429,8 @@ class propulsion(object):
 
         # Once the velocity and the acceleration is up to date, compute the estimated Torque and friction coefficient
         #self.torque_calc()
+
+        self.writeCmd()
 
         # Msg
         encd_info.linear.x = self.posA

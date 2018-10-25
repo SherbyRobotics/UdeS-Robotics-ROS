@@ -93,7 +93,7 @@ const int pwm_min_ser = 30  ;
 const int pwm_zer_ser = 90  ;
 const int pwm_max_ser = 150 ;
 
-const int pwm_min_cmd = 30 ;
+const int pwm_min_cmd = 25 ;
 const int pwm_max_cmd = 255 ;
 
 // From_max param init. for the different control loops
