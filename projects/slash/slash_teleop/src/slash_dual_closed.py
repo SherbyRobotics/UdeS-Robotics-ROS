@@ -87,7 +87,21 @@ class teleop(object):
             #cmd_msg.angular.y = 0
             cmd_msg.angular.z = (joy_msg.axes[2]+joy_msg.axes[0])/2*-1*30*2*3.1416/360  #Servo cmd (mean of both joysticks)
 
-        elif((joy_msg.buttons[4] == 0) and (joy_msg.buttons[5] == 0) and (joy_msg.buttons[1] == 0) and (joy_msg.buttons[2] == 0)):
+        elif(joy_msg.buttons[3] == 1):   
+            
+            enable = True
+
+            # For logitech joystick
+            #mapping button --> cmd
+            cmd_msg.linear.x = 100  #Motor A Targeted at 700 rad/s
+            cmd_msg.linear.y = 0    #Motor B
+            cmd_msg.linear.z = 7                  #CtrlChoice
+            
+            #cmd_msg.angular.x = 0
+            #cmd_msg.angular.y = 0
+            cmd_msg.angular.z = (joy_msg.axes[2]+joy_msg.axes[0])/2*-1*30*2*3.1416/360  #Servo cmd (mean of both joysticks)
+
+        elif((joy_msg.buttons[4] == 0) and (joy_msg.buttons[5] == 0) and (joy_msg.buttons[1] == 0) and (joy_msg.buttons[2] == 0) and (joy_msg.buttons[3] == 0)):
             
             enable = False
             

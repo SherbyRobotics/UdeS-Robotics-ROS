@@ -115,7 +115,7 @@ class propulsion(object):
     def writeCmd(self):
 
       #For openloop controls, simply pass the info from planif to prop
-      if (self.CtrlChoice == 0 or self.CtrlChoice == 1):                
+      if (self.CtrlChoice == 0 or self.CtrlChoice == 1 or self.CtrlChoice == 7):                
         msg_MA     = self.cmd_MotorA     
         msg_MB     = self.cmd_MotorB
         cmd_MotorA = 0          #No targeted value, only write the teleop info
