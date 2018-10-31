@@ -35,18 +35,22 @@ class propulsion(object):
         self.tCC5_last = rospy.get_time()
 
         # Init encoders related params
+        # Raw data
         self.encdA_last = 0                  
         self.encdB_last = 0
         self.posA_last  = 0
         self.posB_last  = 0
         self.velA_last  = 0
         self.velB_last  = 0
-        self.velA_Flast = 0
-        self.velB_Flast = 0
         self.accA_last  = 0
         self.accB_last  = 0
+        #Filtered data
+        self.velA_Flast = 0
+        self.velB_Flast = 0
         self.accA_Flast = 0
         self.accB_Flast = 0
+
+
 
         # Init gains for encoders counts conversion
         self.res_encd = 2048                #Set encoders resolution (pulses per rounds)
@@ -79,14 +83,11 @@ class propulsion(object):
         self.KpCB     = rospy.get_param("~KpCB", 5)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
         self.KpPA     = rospy.get_param("~KpPA", 0.3)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
         self.KpPB     = rospy.get_param("~KpPB", 5)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
-        self.KpVA     = rospy.get_param("~KpVA", 0.25)   #Proportional gain for motor A velocity control  ****Needs to be tuned and/or add Ki Kd****
-        self.KiVA     = rospy.get_param("~KpVA", 0.25)   #Proportional gain for motor A velocity control  ****Needs to be tuned and/or add Ki Kd****
-        self.KpVB     = rospy.get_param("~KpVB", 0.5)   #Proportional gain for motor B velocity control  ****Needs to be tuned and/or add Ki Kd****
 
-        # Init closed loop CC5
-        self.tCC5_last   = rospy.get_time()
-        self.I_last      = 0
-        self.errorA_last = self.cmd_MotorA
+        # Gains for CC5 (Clsoed loop in rad/s)
+        self.KpCC5    = rospy.get_param("~KpCC5", 0.25) #Proportional gain for velocity control  
+        self.KiCC5    = rospy.get_param("~KpCC5", 0.25) #Integral gain for velocity control 
+
 
     #######################################
     #------------Read commands------------#
@@ -221,24 +222,11 @@ class propulsion(object):
       t_now = rospy.get_time()
 
       #Set the targeted velocity (rad/s) from the planif algo
-      rad_tA = cmd_MA
-      rad_tB = cmd_MB
-
-      #Closedloop error
-      if ((rad_tA-self.velB)>0):   
-        errorA = rad_tA - self.velB     
-      else:
-        errorA = 0
-
-      #Proportional command
-      P     = errorA*self.KpVA 
-     
-
-      I_now = ((self.errorA_last*self.KiVA+errorA*self.KiVA)*(t_now-self.tCC5_last))/2
-      I_tot = I_now+self.I_last
-      velMA = P+I_tot
-   
-      velMB = (rad_tB - self.velB)*self.KpVB 
+      vrad_tA = cmd_MA
+      vrad_tB = cmd_MB
+      
+      cmd_A,e_lastA,self.tCC5_last  = self.PI(vrad_tA,self.velB) #Change self.velB  for self.velA eventually
+      cmd_B  = self.PI(vrad_tB,self.velB)
 
       #Convert cmd_S to servo angle in rad
       radS = cmd_Servo*self.cmd2rad
@@ -269,6 +257,30 @@ class propulsion(object):
 
       return posMA, posMB, radS  
 
+    #######################################
+    #------------PI Controller------------#              ***Might be useful to add a speed limitor here***
+    #######################################
+
+    def PI(self, dsrd, meas, Kp, Ki, e_last, t_last, I_last):
+
+      #Closedloop error: Error = (desired - measured)
+      e = dsrd-meas     
+
+      #Proportional command
+      P     = e*Kp
+     
+      #Time
+      t_now = rospy.get_time()
+     
+      #Integral command
+      I_now = ((e_last*Ki+e*Ki)*(t_now-t_last))/2   #Find area under curves for each dT
+      I_tot = I_now+I_last                          #Sum all areas
+
+      #Sum of both P and I for PI controller
+      cmd = P+I_tot 
+
+      return cmd,e_last,t_last,I_last
+  
     ##########################################################################################
     #                                                                                        #
     #                  *****CMD MESSAGE PUBLISHER TO -----> ARDUINO*****                     # 
