@@ -14,52 +14,142 @@ class teleop(object):
         
         self.verbose = False
         
+        self.sub_joy      = rospy.Subscriber("joy", Joy , self.joy_callback , queue_size=1)
+        self.pub_cmd      = rospy.Publisher("cmd_vel", Twist , queue_size=1  )        
         
-        self.sub_joy      = rospy.Subscriber("joy", Joy , self.joy_callback , queue_size=1       )
+    #######################################
+    #---Converts joysticks info to msg----#
+    #######################################
+
+    def readJoy(self,cmd_MA,cmd_MB,ser_DA,ser_DB):
+
+        self.cmd_msg.linear.x = cmd_MA  
+        self.cmd_msg.linear.y = cmd_MB 
+            
+        #self.cmd_msg.angular.x = 0
+        self.cmd_msg.angular.y = ser_DA 
+        self.cmd_msg.angular.z = ser_DB 
+
+    ####################################### 
         
-        self.pub_cmd      = rospy.Publisher("cmd_vel", Twist , queue_size=1  )
-        
-        
-    #######################################   
     def joy_callback( self, joy_msg ):
         """ """
         
-        # init cmd msg
-        cmd_msg = Twist()
-        
-        # if trigger is active
-        if ( joy_msg.buttons[6] > 0 ):
+    #######################################
+    #------------Read joysticks-----------#
+    #######################################
+        self.cmd_msg = Twist()
+     
+        cmd_MA = joy_msg.axes[3]    #Motor A
+        cmd_MB = joy_msg.axes[1]    #Motor B
+        ser_DA = joy_msg.axes[2]    #Direction A
+        ser_DB = joy_msg.axes[0]    #Direction B
+
+    #######################################
+    #------CC0 - Openloop in Volts--------#
+    #######################################
+
+        #If left button is active 
+        if (joy_msg.buttons[4] == 1):
             
             enable = True
+            self.cmd_msg.linear.z = 0   #CtrlChoice
+            self.readJoy(cmd_MA,cmd_MB,ser_DA,ser_DB)
 
+    #######################################
+    #--------CC1 - Openloop in m/s--------#
+    #######################################
+ 
+        #If right button is active       
+        elif (joy_msg.buttons[5] == 1):    
+            
+            enable = True
+            self.cmd_msg.linear.z = 1   #CtrlChoice
+            self.readJoy(cmd_MA,cmd_MB,ser_DA,ser_DB)
 
-            # For logitech joystick
-            #mapping button --> cmd
-            cmd_msg.linear.x = joy_msg.axes[3]
-            #cmd_msg.linear.y = 0
-            #cmd_msg.linear.z = 0            
+    #######################################
+    #--------CC2 - Closedloop in A--------#
+    #######################################
+          
+        #If button A is active 
+        elif(joy_msg.buttons[1] == 1):   
             
-            #cmd_msg.angular.x = 0
-            #cmd_msg.angular.y = 0
-            cmd_msg.angular.z = joy_msg.axes[2]*-1
+            enable = True
+            self.cmd_msg.linear.z = 2   #CtrlChoice
+
+    #######################################
+    #--------CC3 - Closedloop in m--------#
+    #######################################
+
+        #If button B is active
+        elif(joy_msg.buttons[2] == 1):   
             
-        else:
+            enable = True
+            self.cmd_msg.linear.z = 3   #CtrlChoice
+
+    #######################################
+    #------CC4 - Closedloop in m/s--------#
+    #######################################
+
+        #If button Y is active
+        elif(joy_msg.buttons[3] == 1):   
+            
+            enable = True
+            self.cmd_msg.linear.z = 4    #CtrlChoice
+
+    #######################################
+    #------CC5 - Closedloop in rad/s------#
+    #######################################
+
+        #If button Y is active
+        elif(joy_msg.buttons[0] == 1):   
+            
+            enable = True
+            self.cmd_msg.linear.z = 5    #CtrlChoice
+
+    #######################################
+    #-------CC6 - Closedloop in rad-------#
+    #######################################
+
+        #If bottom arrow is active
+        elif(joy_msg.axes[5] < 0):   
+            
+            enable = True
+            self.cmd_msg.linear.z = 6    #CtrlChoice
+
+    #######################################
+    #-----CC7 - Closedloop in Torque------#
+    #######################################
+
+        #If right arrow is active
+        elif(joy_msg.axes[4] < 0):   
+            
+            enable = True
+            self.cmd_msg.linear.z = 7    #CtrlChoice
+
+    #######################################
+    #---Reinit when buttons are inactive--#
+    #######################################
+
+        elif((joy_msg.buttons[4] == 0) and (joy_msg.buttons[5] == 0) and (joy_msg.buttons[1] == 0) and (joy_msg.buttons[2] == 0) and (joy_msg.buttons[3] == 0) and (joy_msg.buttons[0] == 0)):
             
             enable = False
             
-            cmd_msg.linear.x = 0.0 
-            #cmd_msg.linear.y = 0
-            #cmd_msg.linear.z = 0            
+            self.cmd_msg.linear.x = 0.0 
+            self.cmd_msg.linear.y = 0
+            self.cmd_msg.linear.z = 0            
             
             #cmd_msg.angular.x = 0
             #cmd_msg.angular.y = 0
-            cmd_msg.angular.z = 0.0 
-                   
+            self.cmd_msg.angular.z = 0.0 
+
+    #######################################
+    #------------Publish msg--------------#
+    #######################################                   
         
         # Publish cmd msg
-        self.pub_cmd.publish( cmd_msg )
+        self.pub_cmd.publish( self.cmd_msg )
             
-
 
 #########################################
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 <launch>
 
-  <node pkg="slash_teleop" type="slash_dual_closed.py" name="slash_teleop">
+  <node pkg="slash_teleop" type="slash_teleop.py" name="slash_teleop">
   </node>
 
   <node pkg="joy" type="joy_node" name="joystick" >
@@ -11,7 +11,10 @@
     <param name="port" value="/dev/ttyACM0"/>
   </node>
 
-  <node pkg="slash_propulsion" type="propulsion_test.py" name="PROPULSION" output="screen">
+  <node pkg="slash_propulsion" type="single_propulsion.py" name="PROPULSION" output="screen">
+  </node>
+
+  <node pkg="slash_planif" type="planif_single_prop.py" name="PLANIFICATION" output="screen">
   </node>
 
 </launch>

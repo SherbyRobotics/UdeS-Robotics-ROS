@@ -20,7 +20,7 @@ class propulsion(object):
         self.CtrlChoice = 0
 
         # Init subscribers  
-        self.sub_teleop  = rospy.Subscriber("cmd_vel", Twist, self.planRead, queue_size=1)                      
+        
         self.sub_planif  = rospy.Subscriber("planif", Twist, self.planRead, queue_size=1)
         self.sub_encd    = rospy.Subscriber("encoders_counts", Twist , self.encdRead, queue_size=1)
         #self.sub_pwm     = rospy.Subscriber("arduino_debug_feedback", Twist, self.pwmRead, queue_size=1)
@@ -28,34 +28,34 @@ class propulsion(object):
         # Init publisher    
         self.pub_cmd     = rospy.Publisher("cmd_prop", Twist , queue_size=1)
         self.pub_encd    = rospy.Publisher("encd_info", Twist , queue_size=1)
+
+        # Init pub_cmd params
+        self.cmd_MotorA = 0
+        self.cmd_MotorB = 0
+        self.tar_MotorA = 0
+        self.tar_MotorB = 0
+        self.cmd_Servo  = 0   
   
         # Init time
         self.tp_last = rospy.get_time()   #Set first time used for velocity calculation to 0
         self.tv_last = rospy.get_time()   #Set first time used for acceleration calculation to 0
-        self.tCC5_last = rospy.get_time()
+
+        # Init closedloop control related params
+        self.f2,self.f3,self.f4,self.f5,self.f6,self.f7 = 0,0,0,0,0,0
 
         # Init encoders related params
         # Raw data
-        self.encdA_last = 0                  
-        self.encdB_last = 0
-        self.posA_last  = 0
-        self.posB_last  = 0
-        self.velA_last  = 0
-        self.velB_last  = 0
-        self.accA_last  = 0
-        self.accB_last  = 0
+        self.encdA_last,self.encdB_last = 0,0                  
+        self.posA_last,self.posB_last   = 0,0
+        self.velA_last,self.velB_last   = 0,0
+        self.accA_last,self.accB_last   = 0,0
         #Filtered data
-        self.velA_Flast = 0
-        self.velB_Flast = 0
-        self.accA_Flast = 0
-        self.accB_Flast = 0
-
-
+        self.velA_Flast,self.velB_Flast = 0,0
+        self.accA_Flast,self.accB_Flast = 0,0
 
         # Init gains for encoders counts conversion
         self.res_encd = 2048                #Set encoders resolution (pulses per rounds)
         self.round2rad = 2*3.1416           #Set the gain for rounds to rad conversion
-        self.nsecs2secs = 1000000000        #Set the gain for nanoseconds to seconds conv.
 
     ##########################################################################################
     #                                                                                        #
@@ -79,14 +79,31 @@ class propulsion(object):
         self.wheelrad = rospy.get_param("~wheelrad", 0.05) #Wheel radius in meters
         self.rads2ms  = self.wheelrad
         self.gearR    = rospy.get_param("~gearR", 10) #Gear ratio
-        self.KpCA     = rospy.get_param("~KpCA", 5)   #Proportional gain for motor A current control  ****Needs to be tuned and/or add Ki Kd****
-        self.KpCB     = rospy.get_param("~KpCB", 5)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
-        self.KpPA     = rospy.get_param("~KpPA", 0.3)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
-        self.KpPB     = rospy.get_param("~KpPB", 5)   #Proportional gain for motor B current control  ****Needs to be tuned and/or add Ki Kd****
 
-        # Gains for CC5 (Clsoed loop in rad/s)
-        self.KpCC5    = rospy.get_param("~KpCC5", 0.25) #Proportional gain for velocity control  
-        self.KiCC5    = rospy.get_param("~KpCC5", 0.25) #Integral gain for velocity control 
+        # Gains for CC2 (Closed loop in A)
+        self.KpCC2    = rospy.get_param("~KpCC2", 0.25) #Proportional gain for current control  
+        self.KiCC2    = rospy.get_param("~KiCC2", 0.25) #Integral gain for current control 
+
+        # Gains for CC3 (Closed loop in m)
+        self.KpCC3    = rospy.get_param("~KpCC3", 0.25) #Proportional gain for position control  
+        self.KiCC3    = rospy.get_param("~KiCC3", 0.25) #Integral gain for position control 
+
+        # Gains for CC4 (Closed loop in m/s)
+        self.KpCC4    = rospy.get_param("~KpCC4", 0.25) #Proportional gain for velocity control  
+        self.KiCC4    = rospy.get_param("~KiCC4", 0.25) #Integral gain for velocity control 
+
+        # Gains for CC5 (Closed loop in rad/s)
+        self.KpCC5    = rospy.get_param("~KpCC5", 0.25) #Proportional gain for angular velocity control  
+        self.KiCC5    = rospy.get_param("~KiCC5", 0.25) #Integral gain for angular velocity control
+
+        # Gains for CC6 (Closed loop in rad)
+        self.KpCC6    = rospy.get_param("~KpCC6", 0.25) #Proportional gain for angular position control  
+        self.KiCC6    = rospy.get_param("~KiCC6", 0.25) #Integral gain for angular position control 
+
+        # Gains for CC7 (Closed loop in Nm)
+        self.KpCC7    = rospy.get_param("~KpCC7", 0.25) #Proportional gain for Torque control  
+        self.KiCC7    = rospy.get_param("~KiCC7", 0.25) #Integral gain for Torque control 
+ 
 
 
     #######################################
@@ -96,9 +113,11 @@ class propulsion(object):
     def planRead(self,cmd):
    
       #Read commands
-      self.cmd_MotorA = cmd.linear.x
+      self.cmd_MotorA = cmd.linear.x   #Commands for both motors
       self.cmd_MotorB = cmd.linear.y
-      self.cmd_Servo  = cmd.angular.z
+      self.tar_MotorA = cmd.angular.x  #Targeted values for both motors
+      self.tar_MotorB = cmd.angular.y
+      self.cmd_Servo  = cmd.angular.z  #Command for servo control
 
       #Get params function
       self.getparam()
@@ -108,19 +127,20 @@ class propulsion(object):
 
     ##########################################################################################
     #                                                                                        #
-    #            *****COMMANDS FROM PLANIF ALGO FOR CTRLCHOICE 2, 3, 4 & 5*****              # 
+    #            *****COMMANDS FROM PLANIF ALGO FOR OPENLOOPS CC0 & CC1*****                 # 
     #                                                                                        #
     ##########################################################################################
 
     def writeCmd(self):
 
       #For openloop controls, simply pass the info from planif to prop
-      if (self.CtrlChoice == 0 or self.CtrlChoice == 1 or self.CtrlChoice == 7):                
-        msg_MA     = self.cmd_MotorA     
-        msg_MB     = self.cmd_MotorB
-        cmd_MotorA = 0          #No targeted value, only write the teleop info
-        cmd_MotorB = 0         
-        msg_S      = self.cmd_Servo
+      if (self.CtrlChoice == 0 or self.CtrlChoice == 1):  #CC0 is openloop in Volts and CC1 is openloop Torque (Nm)          
+        cmd_MA     = self.cmd_MotorA     
+        cmd_MB     = self.cmd_MotorB
+        tar_MA     = self.tar_MotorA        
+        tar_MB     = self.tar_MotorB 
+        self.f2,self.f3,self.f4,self.f5,self.f6,self.f7 = 0,0,0,0,0,0 #Init all started closedloop          
+
 
     ##########################################################################################
     #                                                                                        #
@@ -133,129 +153,187 @@ class propulsion(object):
     #######################################  
 
       #Call the right function depending on the CtrlChoice
-      elif (self.CtrlChoice == 2):                #Planif closedloop in A
-        msg_MA,msg_MB,msg_S = self.CC2(self.cmd_MotorA, self.cmd_MotorB, self.cmd_servo)
+      elif (self.CtrlChoice == 2):              #Planif closedloop in A
+        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC2(self.tar_MotorA, self.tar_MotorB)
       elif (self.CtrlChoice == 3):              #Planif closedloop in m
-        msg_MA,msg_MB,msg_S = self.CC3(self.cmd_MotorA, self.cmd_MotorB, self.cmd_Servo)
+        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC3(self.tar_MotorA, self.tar_MotorB)
       elif (self.CtrlChoice == 4):              #Planif closedloop in m/s
-        msg_MA,msg_MB,msg_S = self.CC4(self.cmd_MotorA, self.cmd_MotorB, self.cmd_Servo)
+        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC4(self.tar_MotorA, self.tar_MotorB)
       elif (self.CtrlChoice == 5):              #Planif closedloop in rad/s
-        msg_MA,msg_MB,msg_S = self.CC5(self.cmd_MotorA, self.cmd_MotorB, self.cmd_Servo)
+        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC5(self.tar_MotorA, self.tar_MotorB)
       elif (self.CtrlChoice == 6):              #Planif closedloop in rad
-        msg_MA,msg_MB,msg_S = self.CC6(self.cmd_MotorA, self.cmd_MotorB, self.cmd_Servo)
+        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC6(self.tar_MotorA, self.tar_MotorB)
+      elif (self.CtrlChoice == 7):              #Planif closedloop in Torque
+        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC7(self.tar_MotorA, self.tar_MotorB)
+
+      msg_S = self.cmd_Servo
       
       #Call the msg publisher function
-      self.msgPub(msg_MA,msg_MB,self.cmd_MotorA,self.cmd_MotorB,msg_S)
+      self.msgPub(cmd_MA,cmd_MB,tar_MA,tar_MB,msg_S)
 
     #######################################
     #-------Planif closedloop in A--------#
     #######################################
 
-    def CC2(self, cmd_MA, cmd_MB, cmd_Servo):
-
-      #Set the targeted current from the planif algo
-      amp_tA = cmd_MA
-      amp_tB = cmd_MB
+    def CC2(self, tar_MA, tar_MB):
 
       #Closedloop       *****We need a current sensor*****
-      #ampMA = (ampM_tA - m_ampA)*self.KpCA                ***Where Kp is the proportional gain and m_amp is the measured current***Will probably come from the Arduino
-      #ampMB = (ampM_tB - m_ampB)*self.KpCB                ***Where Kp is the proportional gain and m_amp is the measured current***
+      #cmd_MA = (t_MA_A - m_ampA)*self.KpCA                ***Where Kp is the proportional gain and m_amp is the measured current***Will probably come from the Arduino
+      #cmd_MB = (t_MB_A - m_ampB)*self.KpCB                ***Where Kp is the proportional gain and m_amp is the measured current***
 
-      #Convert cmd_S to servo angle in rad
-      radS = cmd_Servo*self.cmd2rad
-
-      return ampM_tA, ampM_tB, radS       #****Change to ampMA and ampMB once we have the need hardware****
+      return 0,0,tar_MA,tar_MB      #****Change to cmd_MA and cmd_MB once we have the need hardware****
 
     #######################################
     #-------Planif closedloop in m--------#              ***Might be useful to add a speed limitor here***
     #######################################
 
-    def CC3(self, cmd_MA, cmd_MB, cmd_Servo):
+    def CC3(self, tar_MA, tar_MB):
 
-      #Set the targeted position (m) from the planif algo
-      pos_tA = cmd_MA
-      pos_tB = cmd_MB
+      # Init
+      if (self.f3 == 0):
+        self.tlast_A_CC3 = rospy.get_time()
+        self.tlast_B_CC3 = rospy.get_time()
+        self.Ilast_A_CC3,self.elast_A_CC3,self.Ilast_B_CC3,self.elast_B_CC3 = 0,0,0,0
+        self.f3 = 1 
+        self.f2,self.f4,self.f5,self.f6,self.f7 = 0,0,0,0,0 
 
-      #Calculate the longitudinal velocity according to measured angular velocity
-      m_posA = self.posA*self.wheelrad*self.gearR
-      m_posB = self.posB*self.wheelrad*self.gearR
+      # Calculate the longitudinal velocity according to measured angular velocity
+      posA = self.posA*self.wheelrad*self.gearR
+      posB = self.posB*self.wheelrad*self.gearR  
 
-      #Closedloop   
-      posMA = (pos_tA - m_posA)*self.KpPA      
-      posMB = (pos_tB - m_posB)*self.KpPB  
+      # ClosedLoop      
+      cmd_MA,e_A_CC3,t_A_CC3,I_A_CC3  = self.PI(tar_MA,posA,self.KpCC3,self.KiCC3,self.elast_A_CC3, self.tlast_A_CC3,self.Ilast_A_CC3)
+      cmd_MB,e_B_CC3,t_B_CC3,I_B_CC3  = self.PI(tar_MB,posB,self.KpCC3,self.KiCC3,self.elast_B_CC3, self.tlast_B_CC3,self.Ilast_B_CC3) 
 
-      #Convert cmd_S to servo angle in rad
-      radS = cmd_Servo*self.cmd2rad            
+      # Re-init
+      self.Ilast_A_CC3 = I_A_CC3
+      self.tlast_A_CC3 = t_A_CC3
+      self.elast_A_CC3 = e_A_CC3    
+      self.Ilast_B_CC3 = I_B_CC3
+      self.tlast_B_CC3 = t_B_CC3
+      self.elast_B_CC3 = e_B_CC3      
 
-      return posMA, posMB, radS  
+      return cmd_MA,cmd_MB,tar_MA,tar_MB  
 
     #######################################
     #------Planif closedloop in m/s-------#
     #######################################
 
-    def CC4(self, cmd_MA, cmd_MB, cmd_Servo):
+    def CC4(self, tar_MA, tar_MB):
+ 
+      # Init
+      if (self.f4 == 0):
+        self.tlast_A_CC4 = rospy.get_time()
+        self.tlast_B_CC4 = rospy.get_time()
+        self.Ilast_A_CC4,self.elast_A_CC4,self.Ilast_B_CC4,self.elast_B_CC4 = 0,0,0,0
+        self.f4 = 1 
+        self.f2,self.f3,self.f5,self.f6,self.f7 = 0,0,0,0,0 
+  
+      # Calculate the longitudinal velocity according to measured angular velocity
+      velA = self.velA*self.rads2ms*self.gearR
+      velB = self.velB*self.rads2ms*self.gearR
 
-      #Set the targeted velocity (m/s) from the planif algo
-      vel_tA = cmd_MA
-      vel_tB = cmd_MB
+      # ClosedLoop      
+      cmd_MA,e_A_CC4,t_A_CC4,I_A_CC4  = self.PI(tar_MA,velA,self.KpCC4,self.KiCC4,self.elast_A_CC4, self.tlast_A_CC4,self.Ilast_A_CC4) #Change self.velB  for self.velA eventually
+      cmd_MB,e_B_CC4,t_B_CC4,I_B_CC4  = self.PI(tar_MB,velB,self.KpCC4,self.KiCC4,self.elast_B_CC4, self.tlast_B_CC4,self.Ilast_B_CC4) 
 
-      #Calculate the longitudinal velocity according to measured angular velocity
-      m_velA = self.velA*self.rads2ms*self.gearR
-      m_velB = self.velB*self.rads2ms*self.gearR
+      # Re-init
+      self.Ilast_A_CC4 = I_A_CC4
+      self.tlast_A_CC4 = t_A_CC4
+      self.elast_A_CC4 = e_A_CC4    
+      self.Ilast_B_CC4 = I_B_CC4
+      self.tlast_B_CC4 = t_B_CC4
+      self.elast_B_CC4 = e_B_CC4      
 
-      #Closedloop   
-      velMA = (vel_tA - m_velA)*self.KpVA      
-      velMB = (vel_tB - m_velB)*self.KpVB     
-
-      #Convert cmd_S to servo angle in rad
-      radS = cmd_Servo*self.cmd2rad         
-
-      return velMA, velMB, radS 
+      return cmd_MA,cmd_MB,tar_MA,tar_MB 
 
     #######################################
     #-----Planif closedloop in rad/s------#
     #######################################
 
-    def CC5(self, cmd_MA, cmd_MB, cmd_Servo):
+    def CC5(self, tar_MA, tar_MB):
 
-      # Time
-      t_now = rospy.get_time()
+      # Init
+      if (self.f5 == 0):
+        self.tlast_A_CC5 = rospy.get_time()
+        self.tlast_B_CC5 = rospy.get_time()
+        self.Ilast_A_CC5,self.elast_A_CC5,self.Ilast_B_CC5,self.elast_B_CC5 = 0,0,0,0
+        self.f5 = 1 
+        self.f2,self.f3,self.f4,self.f6,self.f7 = 0,0,0,0,0   
 
-      #Set the targeted velocity (rad/s) from the planif algo
-      vrad_tA = cmd_MA
-      vrad_tB = cmd_MB
-      
-      cmd_A,e_lastA,self.tCC5_last  = self.PI(vrad_tA,self.velB) #Change self.velB  for self.velA eventually
-      cmd_B  = self.PI(vrad_tB,self.velB)
-
-      #Convert cmd_S to servo angle in rad
-      radS = cmd_Servo*self.cmd2rad
+      # ClosedLoop      
+      cmd_MA,e_A_CC5,t_A_CC5,I_A_CC5  = self.PI(tar_MA,self.velA,self.KpCC5,self.KiCC5,self.elast_A_CC5, self.tlast_A_CC5,self.Ilast_A_CC5) 
+      cmd_MB,e_B_CC5,t_B_CC5,I_B_CC5  = self.PI(tar_MB,self.velB,self.KpCC5,self.KiCC5,self.elast_B_CC5, self.tlast_B_CC5,self.Ilast_B_CC5) 
 
       # Re-init
-      self.I_last      = I_tot
-      self.tCC5_last   = t_now
-      self.errorA_last = errorA         
+      self.Ilast_A_CC5 = I_A_CC5
+      self.tlast_A_CC5 = t_A_CC5
+      self.elast_A_CC5 = e_A_CC5    
+      self.Ilast_B_CC5 = I_B_CC5
+      self.tlast_B_CC5 = t_B_CC5
+      self.elast_B_CC5 = e_B_CC5      
 
-      return velMA, velMB, radS 
+      return cmd_MA,cmd_MB,tar_MA,tar_MB 
 
     #######################################
     #------Planif closedloop in rad-------#              ***Might be useful to add a speed limitor here***
     #######################################
 
-    def CC6(self, cmd_MA, cmd_MB, cmd_Servo):
+    def CC6(self, tar_MA, tar_MB):
 
-      #Set the targeted position (rad) from the planif algo
-      pos_tA = cmd_MA
-      pos_tB = cmd_MB
+      # Init
+      if (self.f6 == 0):
+        self.tlast_A_CC6 = rospy.get_time()
+        self.tlast_B_CC6 = rospy.get_time()
+        self.Ilast_A_CC6,self.elast_A_CC6,self.Ilast_B_CC6,self.elast_B_CC6 = 0,0,0,0
+        self.f6 = 1 
+        self.f2,self.f3,self.f4,self.f5,self.f7 = 0,0,0,0,0   
 
-      #Closedloop   
-      posMA = (pos_tA - self.posB)*self.KpPA      
-      posMB = (pos_tB - self.posB)*self.KpPB  
+      # ClosedLoop      
+      cmd_MA,e_A_CC6,t_A_CC6,I_A_CC6  = self.PI(tar_MA,self.posA,self.KpCC6,self.KiCC6,self.elast_A_CC6, self.tlast_A_CC6,self.Ilast_A_CC6) #Change self.velB  for self.velA eventually
+      cmd_MB,e_B_CC6,t_B_CC6,I_B_CC6  = self.PI(tar_MB,self.posB,self.KpCC6,self.KiCC6,self.elast_B_CC6, self.tlast_B_CC6,self.Ilast_B_CC6) 
 
-      #Convert cmd_S to servo angle in rad
-      radS = cmd_Servo*self.cmd2rad            
+      # Re-init
+      self.Ilast_A_CC6 = I_A_CC6
+      self.tlast_A_CC6 = t_A_CC6
+      self.elast_A_CC6 = e_A_CC6    
+      self.Ilast_B_CC6 = I_B_CC6
+      self.tlast_B_CC6 = t_B_CC6
+      self.elast_B_CC6 = e_B_CC6      
 
-      return posMA, posMB, radS  
+      return cmd_MA,cmd_MB,tar_MA,tar_MB 
+
+    #######################################
+    #------Planif closedloop in Nm--------#             
+    #######################################
+
+    def CC7(self, tar_MA, tar_MB):
+
+      # Init
+      if (self.f7 == 0):
+        self.tlast_A_CC7 = rospy.get_time()
+        self.tlast_B_CC7 = rospy.get_time()
+        self.Ilast_A_CC7,self.elast_A_CC7,self.Ilast_B_CC7,self.elast_B_CC7 = 0,0,0,0
+        self.f7 = 1 
+        self.f2,self.f3,self.f4,self.f5,self.f6 = 0,0,0,0,0   
+
+      # Torque covnersion
+      torqueA = self.velA*15     #A modifier lorsque le modele de propulsion sera complet
+      torqueB = self.velB*15
+
+      # ClosedLoop      
+      cmd_MA,e_A_CC7,t_A_CC7,I_A_CC7  = self.PI(tar_MA,torqueA,self.KpCC7,self.KiCC7,self.elast_A_CC7, self.tlast_A_CC7,self.Ilast_A_CC7) #Change self.velB  for self.velA eventually
+      cmd_MB,e_B_CC7,t_B_CC7,I_B_CC7  = self.PI(tar_MB,torqueB,self.KpCC7,self.KiCC7,self.elast_B_CC7, self.tlast_B_CC7,self.Ilast_B_CC7) 
+
+      # Re-init
+      self.Ilast_A_CC7 = I_A_CC7
+      self.tlast_A_CC7 = t_A_CC7
+      self.elast_A_CC7 = e_A_CC7    
+      self.Ilast_B_CC7 = I_B_CC7
+      self.tlast_B_CC7 = t_B_CC7
+      self.elast_B_CC7 = e_B_CC7      
+
+      return cmd_MA,cmd_MB,tar_MA,tar_MB 
 
     #######################################
     #------------PI Controller------------#              ***Might be useful to add a speed limitor here***
@@ -279,7 +357,7 @@ class propulsion(object):
       #Sum of both P and I for PI controller
       cmd = P+I_tot 
 
-      return cmd,e_last,t_last,I_last
+      return cmd,e,t_now,I_tot
   
     ##########################################################################################
     #                                                                                        #
