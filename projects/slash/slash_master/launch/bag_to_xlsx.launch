@@ -6,7 +6,7 @@
   <node pkg="rosbag" type="play" name="rosbag_record" args="--clock /home/sherbyrobotics/catkin_ws/src/UdeS-Robotics-ROS/projects/slash/slash_datalogging/bagfiles/$(arg bagName).bag">
   </node>
 
-  <node pkg="slash_datalogging" type="bag_to_xlsx_encd.py" name="CONVERTER" output="screen">
+  <node pkg="slash_datalogging" type="bag_to_xlsx_singleprop.py" name="CONVERTER" output="screen">
     <param name ="xlsxName" value= "$(arg xlsxName)" />
   </node>
 

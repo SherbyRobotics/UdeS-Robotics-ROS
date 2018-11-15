@@ -52,8 +52,9 @@ class propulsion(object):
         self.accA_Flast = 0
 
         # Init gains for encoders counts conversion
-        self.res_encd = 2048                #Set encoders resolution (pulses per rounds)
+        self.res_encd = 512*4               #Set encoders resolution (pulses per rounds)
         self.round2rad = 2*3.1416           #Set the gain for rounds to rad conversion
+        self.gearR    = rospy.get_param("~gearR", 15.3) #Gear ratio
 
     ##########################################################################################
     #                                                                                        #
@@ -68,9 +69,9 @@ class propulsion(object):
     def getparam(self):   
 
         # Init closedloop related params
-        self.wheelrad = rospy.get_param("~wheelrad", 0.05) #Wheel radius in meters
+        self.wheelrad = rospy.get_param("~wheelrad", 0.0538) #Wheel radius in meters
         self.rads2ms  = self.wheelrad
-        self.gearR    = rospy.get_param("~gearR", 10) #Gear ratio
+        self.gearR    = rospy.get_param("~gearR", 15.3) #Gear ratio
 
         # Gains for CC2 (Closed loop in A)
         self.KpCC2    = rospy.get_param("~KpCC2", 0.25) #Proportional gain for current control  
@@ -85,8 +86,8 @@ class propulsion(object):
         self.KiCC4    = rospy.get_param("~KiCC4", 0.25) #Integral gain for velocity control 
 
         # Gains for CC5 (Closed loop in rad/s)
-        self.KpCC5    = rospy.get_param("~KpCC5", 0.25) #Proportional gain for angular velocity control  
-        self.KiCC5    = rospy.get_param("~KiCC5", 0.25) #Integral gain for angular velocity control
+        self.KpCC5    = rospy.get_param("~KpCC5", 0.15) #Proportional gain for angular velocity control  
+        self.KiCC5    = rospy.get_param("~KiCC5", 0.00) #Integral gain for angular velocity control
 
         # Gains for CC6 (Closed loop in rad)
         self.KpCC6    = rospy.get_param("~KpCC6", 0.25) #Proportional gain for angular position control  
@@ -238,6 +239,11 @@ class propulsion(object):
       # ClosedLoop      
       cmd_MA,e_A_CC5,t_A_CC5,I_A_CC5  = self.PI(tar_MA,self.velA,self.KpCC5,self.KiCC5,self.elast_A_CC5, self.tlast_A_CC5,self.Ilast_A_CC5) 
 
+      if(cmd_MA<0 and tar_MA>0):
+        cmd_MA = 0
+      if(cmd_MA>0 and tar_MA<0):
+        cmd_MA = 0
+
       # Re-init
       self.Ilast_A_CC5 = I_A_CC5
       self.tlast_A_CC5 = t_A_CC5
@@ -310,7 +316,7 @@ class propulsion(object):
       t_now = rospy.get_time()
      
       #Integral command
-      I_now = ((e_last*Ki+e*Ki)*(t_now-t_last))/2   #Find area under curves for each dT
+      I_now = (((e_last+e)*(t_now-t_last))/2)*Ki    #Find area under curves for each dT
       I_tot = I_now+I_last                          #Sum all areas
 
       #Sum of both P and I for PI controller
@@ -378,10 +384,9 @@ class propulsion(object):
     def pos(self, encdA):
 
         # Counts to postion in rad calculation
-        posA = encdA/self.res_encd*self.round2rad
+        posA = encdA/(self.res_encd*self.gearR)*self.round2rad
         
         return posA
-
     #######################################
     #---------Velocity (rad/s)------------#
     #######################################  
@@ -401,7 +406,7 @@ class propulsion(object):
           velA = dposA/dT
 
           #Low-pass filter
-          a = dT/(40*dT)
+          a = dT/(10*dT)
           velA_F = (1-a)*self.velA_Flast+a*velA
 
         # Set the "now" params to "last" param
@@ -409,7 +414,7 @@ class propulsion(object):
         self.posA_last = posA
         self.velA_Flast = velA_F
 
-        return velA_F
+        return velA_F,velA
         
     #######################################
     #-------Acceleration (rad/s^2)--------#
@@ -457,9 +462,9 @@ class propulsion(object):
         t_now = rospy.get_time()
 
         # Call position (rad), velocity (rad/s) and acceleration (rad/s^2) calculator functions
-        self.posA = self.pos(encdA)
-        self.velA = self.vel(self.posA, t_now)
-        self.accA = self.acc(self.velA, t_now)
+        self.posA           = self.pos(encdA)
+        self.velA, velA_ori = self.vel(self.posA, t_now)
+        self.accA           = self.acc(self.velA, t_now)
 
         # Once the velocity and the acceleration is up to date, compute the estimated Torque and friction coefficient
         #self.torque_calc()
@@ -469,7 +474,9 @@ class propulsion(object):
         # Msg
         encd_info.linear.x = self.posA
         encd_info.linear.y = self.velA
-        encd_info.linear.z = self.accA        
+        encd_info.linear.z = self.accA
+
+        encd_info.angular.y = velA_ori   #Only used to compare raw values with filtered values       
         
         # Publish cmd msg
         self.pub_encd.publish( encd_info )

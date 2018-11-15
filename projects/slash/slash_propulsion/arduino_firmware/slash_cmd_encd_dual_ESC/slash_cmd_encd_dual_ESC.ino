@@ -327,8 +327,8 @@ void loop(){
   nodeHandle.spinOnce();
   
   // Retrieve current encoder counters
-  encoder1count = -readEncoder(1); 
-  encoder2count = readEncoder(2);
+  encoder1count = readEncoder(1); 
+  encoder2count = -readEncoder(2);
     
   // Publish counts
   encdPub.linear.x = encoder1count;

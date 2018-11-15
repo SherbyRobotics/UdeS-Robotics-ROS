@@ -1,0 +1,38 @@
+
+**********************************************
+*         HOW TO PROGRAM A NEW ESC           *
+**********************************************
+
+1- Wire the black ESC wire to the Arduino's ground
+
+2- Wire the red ESC wire to the desired PWM pin on the Arduino (for this project the right ESC is plugged to pin 6 and the left ESC is plugged to pin 5 for the dual propulsion and the ESC of the single propulsion is plugged to pin 6)
+
+CAUTION!: DO NOT PLUG THE RED WIRE OF THE ESC, IT WILL DAMAGE THE MICROCONTROLLER!!!
+
+3- For both the single and the dual propulsion vehicles, flash the slash_cmd_encd_dual_ESC firmware on the Arduino
+
+4- Open a new terminal and run either the slash_single_prop.launch or the slash_dual_prop.launch from the slash_master package
+
+5- In another terminal, run the rostopic echo arduino_debug_feedback command to ensure the PWM signals sent from pin 6 and/or pin 5 are ok
+
+CAUTION!: From now on, make sure the back wheels of the vehicles are not touching ground to prevent from sudden acceleration
+
+6- Plug the battery pack to the ESC and hold the "EZ Set" button until the light turns red. Once it's red, release it.
+
+7- When the red light blinks once, use the controller to send full throttle to the ESC and hold it there.
+
+8- When the red light blinks twice, send full backward throttle and hold it there until the green light blinks.
+
+9- If the light turns solid red, you have succesfully programmed the ESC with the microcontroller's PWM signal!
+
+CAUTION!: If the the light turns solid green, that means you're on low voltage detection. Since we're using NiMH batteries for this project, we want to disable that mode. Please refer to the user manual to do so. 
+
+CAUTION!: Ensure you know the ESC's mode that you're using. To chose the modes, you need to connect the battery to the ESC and hold "EZ Set" button: 
+                   -Mode 1: Sport Mode (100% Forward, 100% Brake, 100% Reverse)
+                    Hold the "EZ Set" button until red light blinks once
+
+                   -Mode 2: Race Mode (100% Forward, 100% Brake, NO Reverse)
+                    Hold the "EZ Set" button until red light blinks twice
+
+                   -Mode 3: Training Mode (50% Forward, 100% Brake, 50% Reverse) **THIS IS THE MODE USED ON BOTH VEHICLES**
+                    Hold the "EZ Set" button until red light blinks three times                    

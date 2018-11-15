@@ -54,8 +54,10 @@ class propulsion(object):
         self.accA_Flast,self.accB_Flast = 0,0
 
         # Init gains for encoders counts conversion
-        self.res_encd = 2048                #Set encoders resolution (pulses per rounds)
+        self.res_encd  = 512*4               #Set encoders resolution (pulses per rounds)
         self.round2rad = 2*3.1416           #Set the gain for rounds to rad conversion
+        self.gearR     = rospy.get_param("~gearR", 8.64) #Gear ratio
+        self.wheelrad  = rospy.get_param("~wheelrad", 0.0538) #Wheel radius in meters
 
     ##########################################################################################
     #                                                                                        #
@@ -76,9 +78,9 @@ class propulsion(object):
         self.cmd2rad   = self.maxStAng*2*3.1416/360     
 
         # Init closedloop related params
-        self.wheelrad = rospy.get_param("~wheelrad", 0.05) #Wheel radius in meters
+        self.wheelrad = rospy.get_param("~wheelrad", 0.0538) #Wheel radius in meters
         self.rads2ms  = self.wheelrad
-        self.gearR    = rospy.get_param("~gearR", 10) #Gear ratio
+        self.gearR    = rospy.get_param("~gearR", 8.64) #Gear ratio
 
         # Gains for CC2 (Closed loop in A)
         self.KpCC2    = rospy.get_param("~KpCC2", 0.25) #Proportional gain for current control  
@@ -421,8 +423,8 @@ class propulsion(object):
     def pos(self, encdA, encdB):
 
         # Counts to postion in rad calculation
-        posA = encdA/self.res_encd*self.round2rad
-        posB = encdB/self.res_encd*self.round2rad
+        posA = encdA/(self.res_encd*self.gearR)*self.round2rad
+        posB = encdB/(self.res_encd*self.gearR)*self.round2rad
         
         return posA, posB
 
@@ -447,7 +449,7 @@ class propulsion(object):
           velB = dposB/dT
 
           #Low-pass filter
-          a = dT/(40*dT)
+          a = dT/(10*dT)
           velA_F = (1-a)*self.velA_Flast+a*velA
           velB_F = (1-a)*self.velB_Flast+a*velB
 

@@ -50,8 +50,8 @@ class planif(object):
         self.t_MB_m = rospy.get_param("~t_MB_m", 2)  #Targeted position (m) for MotorB
         self.t_MA_v = rospy.get_param("~t_MA_v", 1)  #Targeted velocity (m/s) for MotorA
         self.t_MB_v = rospy.get_param("~t_MB_v", 1)  #Targeted velocity (m/s) for MotorB
-        self.t_MA_w = rospy.get_param("~t_MA_w", 1)  #Targeted angular velocity (rad/s) for MotorA
-        self.t_MB_w = rospy.get_param("~t_MB_w", 1)  #Targeted angular velocity (rad/s) for MotorB
+        self.t_MA_w = rospy.get_param("~t_MA_w", 20)  #Targeted angular velocity (rad/s) for MotorA
+        self.t_MB_w = rospy.get_param("~t_MB_w", 22)  #Targeted angular velocity (rad/s) for MotorB
         self.t_MA_r = rospy.get_param("~t_MA_r", 1)  #Targeted angular position (rad) for MotorA
         self.t_MB_r = rospy.get_param("~t_MB_r", 1)  #Targeted angular position (rad) for MotorB
         self.t_MA_T = rospy.get_param("~t_MA_r", 15) #Targeted Torque (Nm) for MotorA

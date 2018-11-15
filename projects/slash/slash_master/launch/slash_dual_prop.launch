@@ -12,6 +12,8 @@
   </node>
 
   <node pkg="slash_propulsion" type="dual_propulsion.py" name="PROPULSION" output="screen">
+    <param name="KpCC5" value="0.1"/>
+    <param name="KiCC5" value="0.1"/>
   </node>
 
   <node pkg="slash_planif" type="planif_dual_prop.py" name="PLANIFICATION" output="screen">
