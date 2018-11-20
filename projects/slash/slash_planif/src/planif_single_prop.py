@@ -79,7 +79,7 @@ class planif(object):
         t_MA   = 0                              #No targeted values since we are in an openloop
 
         #Convert cmd_S to servo angle in rad
-        msg_S = -self.cmd_ServoA*self.cmd2rad  #Means both joysticks for servo command
+        msg_S = -self.cmd_ServoA*self.cmd2rad  
 
     #######################################
     #--------CC1 - OpenLoop in m/s--------#
@@ -90,7 +90,7 @@ class planif(object):
         t_MA   = 0                              #No targeted values since we are in an openloop
 
         #Convert cmd_S to servo angle in rad
-        msg_S = -self.cmd_ServoA*self.cmd2rad  #Means both joysticks for servo command
+        msg_S = -self.cmd_ServoA*self.cmd2rad  
 
     #######################################
     #--------CC2 - Closedloop in A--------#
@@ -126,7 +126,7 @@ class planif(object):
       elif (self.CtrlChoice == 5):
         msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
         t_MA   = self.t_MA_w         #The targeted values are set either by the config file or by the closedloop with the observer                             
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+        msg_S  = -self.cmd_ServoA*self.cmd2rad        #The servo values are set either by the config file or by the closedloop with the observer
 
     #######################################
     #-------CC6 - Closedloop in rad-------#

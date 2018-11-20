@@ -106,6 +106,7 @@ class teleop(object):
             
             enable = True
             self.cmd_msg.linear.z = 5    #CtrlChoice
+            self.readJoy(cmd_MA,cmd_MB,ser_DA,ser_DB)
 
     #######################################
     #-------CC6 - Closedloop in rad-------#
