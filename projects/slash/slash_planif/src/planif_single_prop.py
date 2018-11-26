@@ -47,7 +47,7 @@ class planif(object):
         self.t_MA_A = rospy.get_param("~t_MA_A", 20) #Targeted current (A) for MotorA
         self.t_MA_m = rospy.get_param("~t_MA_m", 2)  #Targeted position (m) for MotorA
         self.t_MA_v = rospy.get_param("~t_MA_v", 1)  #Targeted velocity (m/s) for MotorA
-        self.t_MA_w = rospy.get_param("~t_MA_w", 20)  #Targeted angular velocity (rad/s) for MotorA
+        self.t_MA_w = rospy.get_param("~t_MA_w", 20) #Targeted angular velocity (rad/s) for MotorA
         self.t_MA_r = rospy.get_param("~t_MA_r", 1)  #Targeted angular position (rad) for MotorA
         self.t_MA_T = rospy.get_param("~t_MA_r", 15) #Targeted Torque (Nm) for MotorA
  
@@ -60,7 +60,7 @@ class planif(object):
    
       #Read commands
       self.cmd_MotorA = cmd.linear.x
-      self.cmd_ServoA = cmd.angular.y
+      self.cmd_ServoA = cmd.angular.z
 
       #Get params function
       self.getparam()
@@ -74,9 +74,8 @@ class planif(object):
     #-------CC0 - OpenLoop in Volts-------#
     #######################################
   
-      if (self.CtrlChoice == 0):                #Left button to choose CC0
-        msg_MA = self.CC0(self.cmd_MotorA)      #Right joystick controls MotorA
-        t_MA   = 0                              #No targeted values since we are in an openloop
+      if (self.CtrlChoice == 0):              #Left button to choose CC0
+        t_MA = self.CC0(self.cmd_MotorA)      #Right joystick controls MotorA
 
         #Convert cmd_S to servo angle in rad
         msg_S = -self.cmd_ServoA*self.cmd2rad  
@@ -86,8 +85,7 @@ class planif(object):
     #######################################
 
       elif (self.CtrlChoice == 1):              #Right button to choose CC1
-        msg_MA = self.CC1(self.cmd_MotorA)      #Right joystick controls MotorA
-        t_MA   = 0                              #No targeted values since we are in an openloop
+        t_MA = self.CC1(self.cmd_MotorA)      #Right joystick controls MotorA
 
         #Convert cmd_S to servo angle in rad
         msg_S = -self.cmd_ServoA*self.cmd2rad  
@@ -97,34 +95,30 @@ class planif(object):
     #######################################
 
       elif (self.CtrlChoice == 2):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
         t_MA   = self.t_MA_A         #The targeted values are set either by the config file or by the closedloop with the observer                             
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+        msg_S  = -self.cmd_ServoA*self.cmd2rad        #The servo values are set either by the config file or by the closedloop with the observer
 
     #######################################
     #--------CC3 - Closedloop in m--------#
     #######################################
 
       elif (self.CtrlChoice == 3):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
         t_MA   = self.t_MA_m         #The targeted values are set either by the config file or by the closedloop with the observer                             
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+        msg_S  = -self.cmd_ServoA*self.cmd2rad        #The servo values are set either by the config file or by the closedloop with the observer
 
     #######################################
     #------CC4 - Closedloop in m/s--------#
     #######################################
 
       elif (self.CtrlChoice == 4):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
         t_MA   = self.t_MA_v         #The targeted values are set either by the config file or by the closedloop with the observer                               
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+        msg_S  = -self.cmd_ServoA*self.cmd2rad        #The servo values are set either by the config file or by the closedloop with the observer
 
     #######################################
     #------CC5 - Closedloop in rad/s------#
     #######################################
 
       elif (self.CtrlChoice == 5):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
         t_MA   = self.t_MA_w         #The targeted values are set either by the config file or by the closedloop with the observer                             
         msg_S  = -self.cmd_ServoA*self.cmd2rad        #The servo values are set either by the config file or by the closedloop with the observer
 
@@ -133,22 +127,20 @@ class planif(object):
     #######################################
 
       elif (self.CtrlChoice == 6):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
         t_MA   = self.t_MA_r         #The targeted values are set either by the config file or by the closedloop with the observer                             
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+        msg_S  = -self.cmd_ServoA*self.cmd2rad        #The servo values are set either by the config file or by the closedloop with the observer
 
     #######################################
     #-----CC7 - Closedloop in Torque------#
     #######################################
 
       elif (self.CtrlChoice == 7):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
         t_MA   = self.t_MA_T         #The targeted values are set either by the config file or by the closedloop with the observer                             
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+        msg_S  = -self.cmd_ServoA*self.cmd2rad        #The servo values are set either by the config file or by the closedloop with the observer
 
 
       #Call the msg publisher function
-      self.msgPub(msg_MA,t_MA,msg_S) 
+      self.msgPub(t_MA,msg_S) 
 
     #######################################
     #------Teleop openloop in Volts-------#
@@ -174,20 +166,20 @@ class planif(object):
 
     ##########################################################################################
     #                                                                                        #
-    #                  *****CMD MESSAGE PUBLISHER TO -----> ARDUINO*****                     # 
+    #             *****CMD MESSAGE PUBLISHER TO -----> PROPULSION NODE*****                  # 
     #                                                                                        #
     ##########################################################################################
 
-    def msgPub(self,cmd_MA,targA,cmd_S):
+    def msgPub(self,targA,cmd_S):
  
       #Init encd_info msg
       cmd_prop = Twist()
       
       #Msg
-      cmd_prop.linear.x  = cmd_MA             #Command sent to motor A
+      cmd_prop.linear.x  = targA              #Value targeted for the control choice of motor A
       cmd_prop.linear.z  = self.CtrlChoice    #Control choice
-      cmd_prop.angular.x = targA              #Value targeted for the control choice of motor A
-      cmd_prop.angular.z = cmd_S              #Command sent to the steering servo
+                    
+      cmd_prop.angular.y = cmd_S              #Command sent to the steering servo
 
       # Publish cmd msg
       self.pub_planif.publish(cmd_prop)

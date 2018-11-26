@@ -26,8 +26,10 @@ class propulsion(object):
         #self.sub_pwm     = rospy.Subscriber("arduino_debug_feedback", Twist, self.pwmRead, queue_size=1)
 
         # Init publisher    
-        self.pub_cmd     = rospy.Publisher("cmd_prop", Twist , queue_size=1)
-        self.pub_encd    = rospy.Publisher("encd_info", Twist , queue_size=1)
+        self.pub_cmd    = rospy.Publisher("cmd_prop", Twist , queue_size=1)
+        self.pub_pos    = rospy.Publisher("pos_info", Twist , queue_size=1)
+        self.pub_vel    = rospy.Publisher("vel_info", Twist , queue_size=1)
+        self.pub_acc    = rospy.Publisher("acc_info", Twist , queue_size=1)
 
         # Init pub_cmd params
         self.cmd_MotorA = 0
@@ -106,9 +108,8 @@ class propulsion(object):
     def planRead(self,cmd):
    
       #Read commands
-      self.cmd_MotorA = cmd.linear.x   #Porpulsion command
-      self.tar_MotorA = cmd.angular.x  #Targeted values 
-      self.cmd_Servo  = cmd.angular.z  #Command for servo control
+      self.tar_MotorA = cmd.linear.x   #Porpulsion command
+      self.cmd_Servo  = cmd.angular.y  #Command for servo control
 
       #Get params function
       self.getparam()
@@ -125,9 +126,8 @@ class propulsion(object):
     def writeCmd(self):
 
       #For openloop controls, simply pass the info from planif to prop
-      if (self.CtrlChoice == 0 or self.CtrlChoice == 1):  #CC0 is openloop in Volts and CC1 is openloop Torque (Nm)          
-        cmd_MA     = self.cmd_MotorA     
-        tar_MA     = self.tar_MotorA        
+      if (self.CtrlChoice == 0 or self.CtrlChoice == 1):  #CC0 is openloop in Volts and CC1 is openloop Torque (Nm)               
+        cmd_MA     = self.tar_MotorA        
         self.f2,self.f3,self.f4,self.f5,self.f6,self.f7 = 0,0,0,0,0,0 #Init all started closedloop          
 
 
@@ -143,22 +143,22 @@ class propulsion(object):
 
       #Call the right function depending on the CtrlChoice
       elif (self.CtrlChoice == 2):              #Planif closedloop in A
-        cmd_MA,tar_MA = self.CC2(self.tar_MotorA)
+        cmd_MA = self.CC2(self.tar_MotorA)
       elif (self.CtrlChoice == 3):              #Planif closedloop in m
-        cmd_MA,tar_MA = self.CC3(self.tar_MotorA)
+        cmd_MA = self.CC3(self.tar_MotorA)
       elif (self.CtrlChoice == 4):              #Planif closedloop in m/s
-        cmd_MA,tar_MA = self.CC4(self.tar_MotorA)
+        cmd_MA = self.CC4(self.tar_MotorA)
       elif (self.CtrlChoice == 5):              #Planif closedloop in rad/s
-        cmd_MA,tar_MA = self.CC5(self.tar_MotorA)
+        cmd_MA = self.CC5(self.tar_MotorA)
       elif (self.CtrlChoice == 6):              #Planif closedloop in rad
-        cmd_MA,tar_MA = self.CC6(self.tar_MotorA)
+        cmd_MA = self.CC6(self.tar_MotorA)
       elif (self.CtrlChoice == 7):              #Planif closedloop in Torque
-        cmd_MA,tar_MA = self.CC7(self.tar_MotorA)
+        cmd_MA = self.CC7(self.tar_MotorA)
 
       msg_S = self.cmd_Servo
       
       #Call the msg publisher function
-      self.msgPub(cmd_MA,tar_MA,msg_S)
+      self.msgPub(cmd_MA,msg_S)
 
     #######################################
     #-------Planif closedloop in A--------#
@@ -169,7 +169,7 @@ class propulsion(object):
       #Closedloop       *****We need a current sensor*****
       #cmd_MA = (t_MA_A - m_ampA)*self.KpCA                ***Where Kp is the proportional gain and m_amp is the measured current***Will probably come from the Arduino
 
-      return 0,tar_MA      #****Change to cmd_MA and cmd_MB once we have the need hardware****
+      return 0      #****Change to cmd_MA and cmd_MB once we have the need hardware****
 
     #######################################
     #-------Planif closedloop in m--------#              ***Might be useful to add a speed limitor here***
@@ -195,7 +195,7 @@ class propulsion(object):
       self.tlast_A_CC3 = t_A_CC3
       self.elast_A_CC3 = e_A_CC3         
 
-      return cmd_MA,tar_MA  
+      return cmd_MA  
 
     #######################################
     #------Planif closedloop in m/s-------#
@@ -221,7 +221,7 @@ class propulsion(object):
       self.tlast_A_CC4 = t_A_CC4
       self.elast_A_CC4 = e_A_CC4         
 
-      return cmd_MA,tar_MA 
+      return cmd_MA
 
     #######################################
     #-----Planif closedloop in rad/s------#
@@ -249,7 +249,7 @@ class propulsion(object):
       self.tlast_A_CC5 = t_A_CC5
       self.elast_A_CC5 = e_A_CC5          
 
-      return cmd_MA,tar_MA
+      return cmd_MA
 
     #######################################
     #------Planif closedloop in rad-------#              ***Might be useful to add a speed limitor here***
@@ -272,7 +272,7 @@ class propulsion(object):
       self.tlast_A_CC6 = t_A_CC6
       self.elast_A_CC6 = e_A_CC6         
 
-      return cmd_MA,tar_MA
+      return cmd_MA
 
     #######################################
     #------Planif closedloop in Nm--------#             
@@ -298,7 +298,7 @@ class propulsion(object):
       self.tlast_A_CC7 = t_A_CC7
       self.elast_A_CC7 = e_A_CC7        
 
-      return cmd_MA,tar_MA
+      return cmd_MA
 
     #######################################
     #------------PI Controller------------#              ***Might be useful to add a speed limitor here***
@@ -330,7 +330,7 @@ class propulsion(object):
     #                                                                                        #
     ##########################################################################################
 
-    def msgPub(self,cmd_MA,targA,cmd_S):
+    def msgPub(self,cmd_MA,cmd_S):
  
       #Init encd_info msg
       cmd_prop = Twist()
@@ -338,7 +338,7 @@ class propulsion(object):
       #Msg
       cmd_prop.linear.x  = cmd_MA             #Command sent to motor A
       cmd_prop.linear.z  = self.CtrlChoice    #Control choice
-      cmd_prop.angular.x = targA              #Value targeted for the control choice of motor A
+
       cmd_prop.angular.z = cmd_S              #Command sent to the steering servo
 
       # Publish cmd msg
@@ -414,7 +414,7 @@ class propulsion(object):
         self.posA_last = posA
         self.velA_Flast = velA_F
 
-        return velA_F,velA
+        return velA_F
         
     #######################################
     #-------Acceleration (rad/s^2)--------#
@@ -455,16 +455,18 @@ class propulsion(object):
     def encdRead( self, encd):
         
         # init encd_info msg
-        encd_info = Twist()
+        pos_info = Twist()
+        vel_info = Twist()
+        acc_info = Twist()
         
         # Read both encoders and note time
         encdA = encd.linear.x
         t_now = rospy.get_time()
 
         # Call position (rad), velocity (rad/s) and acceleration (rad/s^2) calculator functions
-        self.posA           = self.pos(encdA)
-        self.velA, velA_ori = self.vel(self.posA, t_now)
-        self.accA           = self.acc(self.velA, t_now)
+        self.posA = self.pos(encdA)
+        self.velA = self.vel(self.posA, t_now)
+        self.accA = self.acc(self.velA, t_now)
 
         # Once the velocity and the acceleration is up to date, compute the estimated Torque and friction coefficient
         #self.torque_calc()
@@ -472,14 +474,14 @@ class propulsion(object):
         self.writeCmd()
 
         # Msg
-        encd_info.linear.x = self.posA
-        encd_info.linear.y = self.velA
-        encd_info.linear.z = self.accA
-
-        encd_info.angular.y = velA_ori   #Only used to compare raw values with filtered values       
+        pos_info.linear.x = self.posA
+        vel_info.linear.x = self.velA
+        acc_info.linear.x = self.accA
         
         # Publish cmd msg
-        self.pub_encd.publish( encd_info )
+        self.pub_pos.publish( pos_info )
+        self.pub_vel.publish( vel_info )
+        self.pub_acc.publish( acc_info )
 
 #########################################
 

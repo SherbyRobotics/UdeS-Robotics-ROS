@@ -43,8 +43,9 @@ class Converter:
       self.posA = data.linear.x
       self.velA = data.linear.y
       self.accA = data.linear.z
-
-      self.vela_ori = data.angular.y
+      self.posB = data.angular.x
+      self.velB = data.angular.y
+      self.accB = data.angular.z
 
       self.dataLogging()
  
@@ -65,9 +66,13 @@ class Converter:
     self.sheet1.write(0,2,'Position A (rad)')
     self.sheet1.write(0,3,'Velocity A (rad/s)')
     self.sheet1.write(0,4,'Acceleration A (rad/s^2')
-    self.sheet1.write(0,5,'Vel A ori (rad/s)')
-    self.sheet1.write(0,6,'Cmd')
-    self.sheet1.write(0,7,'Tar')
+    self.sheet1.write(0,5,'Position B (rad)')
+    self.sheet1.write(0,6,'Velocity B (rad/s)')
+    self.sheet1.write(0,7,'Acceleration B (rad/s^2')
+    self.sheet1.write(0,8,'Cmd A')
+    self.sheet1.write(0,9,'Tar A')
+    self.sheet1.write(0,10,'Cmd B')
+    self.sheet1.write(0,11,'Tar B')
 
     for i in range (0,12):
       self.sheet1.col(i).width = 256*20
@@ -86,8 +91,12 @@ class Converter:
       self.sheet1.write(self.line,3,self.velA)
       self.sheet1.write(self.line,4,self.accA)
       self.sheet1.write(self.line,5,self.posB)
-      self.sheet1.write(self.line,6,self.cmdA)
-      self.sheet1.write(self.line,7,self.serv)
+      self.sheet1.write(self.line,6,self.velB)
+      self.sheet1.write(self.line,7,self.accB)
+      self.sheet1.write(self.line,8,self.cmdA)
+      self.sheet1.write(self.line,9,self.tarA)
+      self.sheet1.write(self.line,10,self.cmdB)
+      self.sheet1.write(self.line,11,self.tarB)
 
 
       

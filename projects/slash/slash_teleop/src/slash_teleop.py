@@ -21,14 +21,25 @@ class teleop(object):
     #---Converts joysticks info to msg----#
     #######################################
 
-    def readJoy(self,cmd_MA,cmd_MB,ser_DA,ser_DB):
+    def readJoy(self,cmd_MA,cmd_ser):
+
+        self.cmd_msg.linear.x = cmd_MA  
+        self.cmd_msg.linear.y = cmd_MA 
+        
+        self.cmd_msg.angular.y = 0                 
+        self.cmd_msg.angular.z = cmd_ser
+
+    #######################################
+    #---Converts joysticks info to msg----#
+    #######################################
+
+    def readJoyTank(self,cmd_MA,cmd_MB,cmd_SA, cmd_SB):
 
         self.cmd_msg.linear.x = cmd_MA  
         self.cmd_msg.linear.y = cmd_MB 
-            
-        #self.cmd_msg.angular.x = 0
-        self.cmd_msg.angular.y = ser_DA 
-        self.cmd_msg.angular.z = ser_DB 
+
+        self.cmd_msg.angular.y = cmd_SA            
+        self.cmd_msg.angular.z = cmd_SB
 
     ####################################### 
         
@@ -40,10 +51,10 @@ class teleop(object):
     #######################################
         self.cmd_msg = Twist()
      
-        cmd_MA = joy_msg.axes[3]    #Motor A
-        cmd_MB = joy_msg.axes[1]    #Motor B
-        ser_DA = joy_msg.axes[2]    #Direction A
-        ser_DB = joy_msg.axes[0]    #Direction B
+        cmd_MA = joy_msg.axes[3]    #Motor A     (Right joystick)
+        cmd_MB = joy_msg.axes[1]    #Motor B     (Left joystick)
+        ser_DA = joy_msg.axes[2]    #Direction A (Right joystick)
+        ser_DB = joy_msg.axes[0]    #Direction B (Left joystick)
 
     #######################################
     #------CC0 - Openloop in Volts--------#
@@ -54,7 +65,7 @@ class teleop(object):
             
             enable = True
             self.cmd_msg.linear.z = 0   #CtrlChoice
-            self.readJoy(cmd_MA,cmd_MB,ser_DA,ser_DB)
+            self.readJoy(cmd_MA,ser_DB)
 
     #######################################
     #--------CC1 - Openloop in m/s--------#
@@ -65,7 +76,7 @@ class teleop(object):
             
             enable = True
             self.cmd_msg.linear.z = 1   #CtrlChoice
-            self.readJoy(cmd_MA,cmd_MB,ser_DA,ser_DB)
+            self.readJoy(cmd_MA,ser_DB)
 
     #######################################
     #--------CC2 - Closedloop in A--------#
@@ -76,6 +87,7 @@ class teleop(object):
             
             enable = True
             self.cmd_msg.linear.z = 2   #CtrlChoice
+            self.readJoy(cmd_MA,ser_DB)
 
     #######################################
     #--------CC3 - Closedloop in m--------#
@@ -86,6 +98,7 @@ class teleop(object):
             
             enable = True
             self.cmd_msg.linear.z = 3   #CtrlChoice
+            self.readJoy(cmd_MA,ser_DB)
 
     #######################################
     #------CC4 - Closedloop in m/s--------#
@@ -96,6 +109,7 @@ class teleop(object):
             
             enable = True
             self.cmd_msg.linear.z = 4    #CtrlChoice
+            self.readJoy(cmd_MA,ser_DB)
 
     #######################################
     #------CC5 - Closedloop in rad/s------#
@@ -106,7 +120,7 @@ class teleop(object):
             
             enable = True
             self.cmd_msg.linear.z = 5    #CtrlChoice
-            self.readJoy(cmd_MA,cmd_MB,ser_DA,ser_DB)
+            self.readJoy(cmd_MA,ser_DB)
 
     #######################################
     #-------CC6 - Closedloop in rad-------#
@@ -117,6 +131,7 @@ class teleop(object):
             
             enable = True
             self.cmd_msg.linear.z = 6    #CtrlChoice
+            self.readJoy(cmd_MA,ser_DB)
 
     #######################################
     #-----CC7 - Closedloop in Torque------#
@@ -127,22 +142,34 @@ class teleop(object):
             
             enable = True
             self.cmd_msg.linear.z = 7    #CtrlChoice
+            self.readJoy(cmd_MA,ser_DB)
+
+    #######################################
+    #-----Tank Drive for dual prop--------#
+    #######################################
+
+        #If left button is active 
+        if (joy_msg.buttons[6] == 1):
+            
+            enable = True
+            self.cmd_msg.linear.z = 8   #CtrlChoice
+            self.readJoyTank(cmd_MA,cmd_MB,ser_DA,ser_DB)
 
     #######################################
     #---Reinit when buttons are inactive--#
     #######################################
 
-        elif((joy_msg.buttons[4] == 0) and (joy_msg.buttons[5] == 0) and (joy_msg.buttons[1] == 0) and (joy_msg.buttons[2] == 0) and (joy_msg.buttons[3] == 0) and (joy_msg.buttons[0] == 0)):
+        elif((joy_msg.buttons[4] == 0) and (joy_msg.buttons[5] == 0) and (joy_msg.buttons[1] == 0) and (joy_msg.buttons[2] == 0) and (joy_msg.buttons[3] == 0) and (joy_msg.buttons[0] == 0) and (joy_msg.buttons[6] == 0)):
             
             enable = False
             
-            self.cmd_msg.linear.x = 0.0 
+            self.cmd_msg.linear.x = 0 
             self.cmd_msg.linear.y = 0
             self.cmd_msg.linear.z = 0            
             
             #cmd_msg.angular.x = 0
-            #cmd_msg.angular.y = 0
-            self.cmd_msg.angular.z = 0.0 
+            self.cmd_msg.angular.y = 0
+            self.cmd_msg.angular.z = 0 
 
     #######################################
     #------------Publish msg--------------#

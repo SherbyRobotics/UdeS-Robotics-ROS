@@ -27,7 +27,9 @@ class propulsion(object):
 
         # Init publisher    
         self.pub_cmd     = rospy.Publisher("cmd_prop", Twist , queue_size=1)
-        self.pub_encd    = rospy.Publisher("encd_info", Twist , queue_size=1)
+        self.pub_pos     = rospy.Publisher("pos_info", Twist , queue_size=1)
+        self.pub_vel     = rospy.Publisher("vel_info", Twist , queue_size=1)
+        self.pub_acc     = rospy.Publisher("acc_info", Twist , queue_size=1)
 
         # Init pub_cmd params
         self.cmd_MotorA = 0
@@ -115,10 +117,8 @@ class propulsion(object):
     def planRead(self,cmd):
    
       #Read commands
-      self.cmd_MotorA = cmd.linear.x   #Commands for both motors
-      self.cmd_MotorB = cmd.linear.y
-      self.tar_MotorA = cmd.angular.x  #Targeted values for both motors
-      self.tar_MotorB = cmd.angular.y
+      self.tar_MotorA = cmd.linear.x  #Targeted values for both motors
+      self.tar_MotorB = cmd.linear.y
       self.cmd_Servo  = cmd.angular.z  #Command for servo control
 
       #Get params function
@@ -137,10 +137,8 @@ class propulsion(object):
 
       #For openloop controls, simply pass the info from planif to prop
       if (self.CtrlChoice == 0 or self.CtrlChoice == 1):  #CC0 is openloop in Volts and CC1 is openloop Torque (Nm)          
-        cmd_MA     = self.cmd_MotorA     
-        cmd_MB     = self.cmd_MotorB
-        tar_MA     = self.tar_MotorA        
-        tar_MB     = self.tar_MotorB 
+        cmd_MA     = self.tar_MotorA        
+        cmd_MB     = self.tar_MotorB 
         self.f2,self.f3,self.f4,self.f5,self.f6,self.f7 = 0,0,0,0,0,0 #Init all started closedloop          
 
 
@@ -156,22 +154,24 @@ class propulsion(object):
 
       #Call the right function depending on the CtrlChoice
       elif (self.CtrlChoice == 2):              #Planif closedloop in A
-        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC2(self.tar_MotorA, self.tar_MotorB)
+        cmd_MA,cmd_MB = self.CC2(self.tar_MotorA, self.tar_MotorB)
       elif (self.CtrlChoice == 3):              #Planif closedloop in m
-        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC3(self.tar_MotorA, self.tar_MotorB)
+        cmd_MA,cmd_MB = self.CC3(self.tar_MotorA, self.tar_MotorB)
       elif (self.CtrlChoice == 4):              #Planif closedloop in m/s
-        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC4(self.tar_MotorA, self.tar_MotorB)
+        cmd_MA,cmd_MB = self.CC4(self.tar_MotorA, self.tar_MotorB)
       elif (self.CtrlChoice == 5):              #Planif closedloop in rad/s
-        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC5(self.tar_MotorA, self.tar_MotorB)
+        cmd_MA,cmd_MB = self.CC5(self.tar_MotorA, self.tar_MotorB)
       elif (self.CtrlChoice == 6):              #Planif closedloop in rad
-        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC6(self.tar_MotorA, self.tar_MotorB)
+        cmd_MA,cmd_MB = self.CC6(self.tar_MotorA, self.tar_MotorB)
       elif (self.CtrlChoice == 7):              #Planif closedloop in Torque
-        cmd_MA,cmd_MB,tar_MA,tar_MB = self.CC7(self.tar_MotorA, self.tar_MotorB)
+        cmd_MA,cmd_MB = self.CC7(self.tar_MotorA, self.tar_MotorB)
+      elif (self.CtrlChoice == 8):              #Tank drive
+        cmd_MA,cmd_MB = self.CC7(self.tar_MotorA, self.tar_MotorB)
 
       msg_S = self.cmd_Servo
       
       #Call the msg publisher function
-      self.msgPub(cmd_MA,cmd_MB,tar_MA,tar_MB,msg_S)
+      self.msgPub(cmd_MA,cmd_MB,msg_S)
 
     #######################################
     #-------Planif closedloop in A--------#
@@ -183,7 +183,7 @@ class propulsion(object):
       #cmd_MA = (t_MA_A - m_ampA)*self.KpCA                ***Where Kp is the proportional gain and m_amp is the measured current***Will probably come from the Arduino
       #cmd_MB = (t_MB_A - m_ampB)*self.KpCB                ***Where Kp is the proportional gain and m_amp is the measured current***
 
-      return 0,0,tar_MA,tar_MB      #****Change to cmd_MA and cmd_MB once we have the need hardware****
+      return 0,0      #****Change to cmd_MA and cmd_MB once we have the need hardware****
 
     #######################################
     #-------Planif closedloop in m--------#              ***Might be useful to add a speed limitor here***
@@ -215,7 +215,7 @@ class propulsion(object):
       self.tlast_B_CC3 = t_B_CC3
       self.elast_B_CC3 = e_B_CC3      
 
-      return cmd_MA,cmd_MB,tar_MA,tar_MB  
+      return cmd_MA,cmd_MB  
 
     #######################################
     #------Planif closedloop in m/s-------#
@@ -247,7 +247,7 @@ class propulsion(object):
       self.tlast_B_CC4 = t_B_CC4
       self.elast_B_CC4 = e_B_CC4      
 
-      return cmd_MA,cmd_MB,tar_MA,tar_MB 
+      return cmd_MA,cmd_MB 
 
     #######################################
     #-----Planif closedloop in rad/s------#
@@ -275,7 +275,7 @@ class propulsion(object):
       self.tlast_B_CC5 = t_B_CC5
       self.elast_B_CC5 = e_B_CC5      
 
-      return cmd_MA,cmd_MB,tar_MA,tar_MB 
+      return cmd_MA,cmd_MB 
 
     #######################################
     #------Planif closedloop in rad-------#              ***Might be useful to add a speed limitor here***
@@ -303,7 +303,7 @@ class propulsion(object):
       self.tlast_B_CC6 = t_B_CC6
       self.elast_B_CC6 = e_B_CC6      
 
-      return cmd_MA,cmd_MB,tar_MA,tar_MB 
+      return cmd_MA,cmd_MB
 
     #######################################
     #------Planif closedloop in Nm--------#             
@@ -335,7 +335,7 @@ class propulsion(object):
       self.tlast_B_CC7 = t_B_CC7
       self.elast_B_CC7 = e_B_CC7      
 
-      return cmd_MA,cmd_MB,tar_MA,tar_MB 
+      return cmd_MA,cmd_MB
 
     #######################################
     #------------PI Controller------------#              ***Might be useful to add a speed limitor here***
@@ -367,7 +367,7 @@ class propulsion(object):
     #                                                                                        #
     ##########################################################################################
 
-    def msgPub(self,cmd_MA,cmd_MB,targA,targB,cmd_S):
+    def msgPub(self,cmd_MA,cmd_MB,cmd_S):
  
       #Init encd_info msg
       cmd_prop = Twist()
@@ -376,8 +376,7 @@ class propulsion(object):
       cmd_prop.linear.x  = cmd_MA             #Command sent to motor A
       cmd_prop.linear.y  = cmd_MB             #Command sent to motor B
       cmd_prop.linear.z  = self.CtrlChoice    #Control choice
-      cmd_prop.angular.x = targA              #Value targeted for the control choice of motor A
-      cmd_prop.angular.y = targB              #Value targeted for the control choice of motor B
+
       cmd_prop.angular.z = cmd_S              #Command sent to the steering servo
 
       # Publish cmd msg
@@ -487,7 +486,7 @@ class propulsion(object):
           accA = dvelA/dT
           accB = dvelB/dT
           #Low-pass filter
-          z = dT/(40*dT)
+          z = dT/(10*dT)
           accA_F = (1-z)*self.accA_Flast+z*accA
           accB_F = (1-z)*self.accB_Flast+z*accB
 
@@ -507,7 +506,9 @@ class propulsion(object):
     def encdRead( self, encd):
         
         # init encd_info msg
-        encd_info = Twist()
+        pos_info = Twist()
+        vel_info = Twist()
+        acc_info = Twist()
         
         # Read both encoders and note time
         encdA = encd.linear.x
@@ -525,16 +526,20 @@ class propulsion(object):
         self.writeCmd()
 
         # Msg
-        encd_info.linear.x = self.posA
-        encd_info.linear.y = self.velA
-        encd_info.linear.z = self.accA
-        encd_info.angular.x = self.posB
-        encd_info.angular.y = self.velB
-        encd_info.angular.z = self.accB
+        pos_info.linear.x = self.posA
+        pos_info.linear.y = self.posB
+
+        vel_info.linear.x = self.velA
+        vel_info.linear.y = self.velB
+
+        acc_info.linear.x = self.accA
+        acc_info.linear.y = self.accB
                    
         
         # Publish cmd msg
-        self.pub_encd.publish( encd_info )
+        self.pub_pos.publish( pos_info )
+        self.pub_vel.publish( vel_info )
+        self.pub_acc.publish( acc_info )
 
 #########################################
 

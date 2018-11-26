@@ -11,12 +11,12 @@
     <param name="port" value="/dev/ttyACM0"/>
   </node>
 
-  <node pkg="slash_propulsion" type="single_propulsion.py" name="PROPULSION" output="screen">
-    <param name="KpCC5" value="0.07"/>
-    <param name="KiCC5" value="0.08"/>
+  <node pkg="slash_propulsion" type="dual_propulsion.py" name="PROPULSION" output="screen">
+    <param name="KpCC5" value="0.1"/>
+    <param name="KiCC5" value="0.1"/>
   </node>
 
-  <node pkg="slash_planif" type="planif_single_prop.py" name="PLANIFICATION" output="screen">
+  <node pkg="slash_planif" type="planif_dual_prop.py" name="PLANIFICATION" output="screen">
   </node>
 
   <arg name="record_msgs" default="true" />
@@ -24,5 +24,6 @@
   <node pkg="rosbag" type="record" name="rosbag_record"
        args="record -o /home/nvidia/catkin_ws/src/UdeS-Robotics-ROS/projects/slash/slash_datalogging/bagfiles/DataBag.bag -a "
        if="$(arg record_msgs)" />
+
 
 </launch>

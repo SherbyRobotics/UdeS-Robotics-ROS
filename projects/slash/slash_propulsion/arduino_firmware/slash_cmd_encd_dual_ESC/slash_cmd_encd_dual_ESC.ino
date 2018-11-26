@@ -270,7 +270,7 @@ void cmdCallback ( const geometry_msgs::Twist&  twistMsg )
 
   // Call the right control loop
   // Commands received in Volts (CC0, CC2, CC3, CC4, CC5, CC6, CC7)
-  if (CtrlChoice == 0 || CtrlChoice == 2 || CtrlChoice == 3 || CtrlChoice == 4 || CtrlChoice == 5 || CtrlChoice == 6 || CtrlChoice == 7){
+  if (CtrlChoice == 0 || CtrlChoice == 2 || CtrlChoice == 3 || CtrlChoice == 4 || CtrlChoice == 5 || CtrlChoice == 6 || CtrlChoice == 7 || CtrlChoice == 8){
     int esc_pwmA    = cmd2pwm( esc_cmdA, volt2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ;
     int esc_pwmB    = cmd2pwm( esc_cmdB, volt2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ;
     pubWrite(esc_pwmA,esc_pwmB,ser_pwm,CtrlChoice);
@@ -335,5 +335,5 @@ void loop(){
   encdPub.linear.y = encoder2count;
   chatter_encd.publish( &encdPub );
   
-  delay(1);
+  delay(50);
 }

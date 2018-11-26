@@ -82,96 +82,102 @@ class planif(object):
     #######################################
   
       if (self.CtrlChoice == 0):                #Left button to choose CC0
-        msg_MA = self.CC0(self.cmd_MotorA)      #Right joystick controls MotorA
-        msg_MB = self.CC0(self.cmd_MotorB)      #Left joystick controls MotorB
-        t_MA   = 0                              #No targeted values since we are in an openloop
-        t_MB   = 0
+        t_MA  = self.CC0(self.cmd_MotorA)      #Right joystick controls MotorA
+        t_MB  = self.CC0(self.cmd_MotorB)      #Left joystick controls MotorB
 
         #Convert cmd_S to servo angle in rad
-        msg_S = -(self.cmd_ServoA+self.cmd_ServoB)/2*self.cmd2rad  #Means both joysticks for servo command
+        msg_S = -self.cmd_ServoB*self.cmd2rad  #Means both joysticks for servo command
 
     #######################################
     #--------CC1 - OpenLoop in m/s--------#
     #######################################
 
       elif (self.CtrlChoice == 1):              #Right button to choose CC1
-        msg_MA = self.CC1(self.cmd_MotorA)      #Right joystick controls MotorA
-        msg_MB = self.CC1(self.cmd_MotorB)      #Left joystick controls MotorB
-        t_MA   = 0                              #No targeted values since we are in an openloop
-        t_MB   = 0
+        t_MA = self.CC1(self.cmd_MotorA)      #Right joystick controls MotorA
+        t_MB = self.CC1(self.cmd_MotorB)      #Left joystick controls MotorB
 
         #Convert cmd_S to servo angle in rad
-        msg_S = -(self.cmd_ServoA+self.cmd_ServoB)/2*self.cmd2rad  #Means both joysticks for servo command
+        msg_S = -self.cmd_ServoB*self.cmd2rad  #Means both joysticks for servo command
 
     #######################################
     #--------CC2 - Closedloop in A--------#
     #######################################
 
       elif (self.CtrlChoice == 2):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
-        msg_MB = 0
         t_MA   = self.t_MA_A         #The targeted values are set either by the config file or by the closedloop with the observer                             
         t_MB   = self.t_MB_A
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+
+        #Convert cmd_S to servo angle in rad
+        msg_S = -self.cmd_ServoB*self.cmd2rad  #Means both joysticks for servo command
 
     #######################################
     #--------CC3 - Closedloop in m--------#
     #######################################
 
       elif (self.CtrlChoice == 3):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
-        msg_MB = 0
         t_MA   = self.t_MA_m         #The targeted values are set either by the config file or by the closedloop with the observer                             
         t_MB   = self.t_MB_m  
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+
+        #Convert cmd_S to servo angle in rad
+        msg_S = -self.cmd_ServoB*self.cmd2rad  #Means both joysticks for servo command
 
     #######################################
     #------CC4 - Closedloop in m/s--------#
     #######################################
 
       elif (self.CtrlChoice == 4):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
-        msg_MB = 0
         t_MA   = self.t_MA_v         #The targeted values are set either by the config file or by the closedloop with the observer                             
         t_MB   = self.t_MB_v    
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+
+        #Convert cmd_S to servo angle in rad
+        msg_S = -self.cmd_ServoB*self.cmd2rad  #Means both joysticks for servo command
 
     #######################################
     #------CC5 - Closedloop in rad/s------#
     #######################################
 
       elif (self.CtrlChoice == 5):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
-        msg_MB = 0
         t_MA   = self.t_MA_w         #The targeted values are set either by the config file or by the closedloop with the observer                             
         t_MB   = self.t_MB_w
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+
+        #Convert cmd_S to servo angle in rad
+        msg_S = -self.cmd_ServoB*self.cmd2rad  #Means both joysticks for servo command
 
     #######################################
     #-------CC6 - Closedloop in rad-------#
     #######################################
 
       elif (self.CtrlChoice == 6):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
-        msg_MB = 0
         t_MA   = self.t_MA_r         #The targeted values are set either by the config file or by the closedloop with the observer                             
         t_MB   = self.t_MB_r
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
+
+        #Convert cmd_S to servo angle in rad
+        msg_S = -self.cmd_ServoB*self.cmd2rad  #Means both joysticks for servo command
 
     #######################################
     #-----CC7 - Closedloop in Torque------#
     #######################################
 
       elif (self.CtrlChoice == 7):
-        msg_MA = 0                   #The commands will be determined by the closedloop control in the propulsion algorithm
-        msg_MB = 0
         t_MA   = self.t_MA_T         #The targeted values are set either by the config file or by the closedloop with the observer                             
         t_MB   = self.t_MB_T
-        msg_S  = 0                   #The servo values are set either by the config file or by the closedloop with the observer
 
+        #Convert cmd_S to servo angle in rad
+        msg_S = -self.cmd_ServoB*self.cmd2rad  #Means both joysticks for servo command
+
+    #######################################
+    #----------TANK DRIVE in Volts -------#
+    #######################################
+  
+      elif (self.CtrlChoice == 8):               #Left trigger to choose CC8
+        t_MA  = self.CC0(self.cmd_MotorA)      #Right joystick controls MotorA
+        t_MB  = self.CC0(self.cmd_MotorB)      #Left joystick controls MotorB
+
+        #Convert cmd_S to servo angle in rad
+        msg_S = -(self.cmd_ServoA+self.cmd_ServoB)/2*self.cmd2rad  #Means both joysticks for servo command
 
       #Call the msg publisher function
-      self.msgPub(msg_MA,msg_MB,t_MA,t_MB,msg_S) 
+      self.msgPub(t_MA,t_MB,msg_S) 
 
     #######################################
     #------Teleop openloop in Volts-------#
@@ -201,17 +207,16 @@ class planif(object):
     #                                                                                        #
     ##########################################################################################
 
-    def msgPub(self,cmd_MA,cmd_MB,targA,targB,cmd_S):
+    def msgPub(self,targA,targB,cmd_S):
  
       #Init encd_info msg
       cmd_prop = Twist()
       
       #Msg
-      cmd_prop.linear.x  = cmd_MA             #Command sent to motor A
-      cmd_prop.linear.y  = cmd_MB             #Command sent to motor B
+      cmd_prop.linear.x  = targA              #Value targeted for the control choice of motor A
+      cmd_prop.linear.y  = targB              #Value targeted for the control choice of motor B
       cmd_prop.linear.z  = self.CtrlChoice    #Control choice
-      cmd_prop.angular.x = targA              #Value targeted for the control choice of motor A
-      cmd_prop.angular.y = targB              #Value targeted for the control choice of motor B
+
       cmd_prop.angular.z = cmd_S              #Command sent to the steering servo
 
       # Publish cmd msg
