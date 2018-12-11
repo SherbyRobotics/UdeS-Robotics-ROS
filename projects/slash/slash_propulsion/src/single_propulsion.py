@@ -106,16 +106,17 @@ class propulsion(object):
     #######################################
 
     def planRead(self,cmd):
-   
-      #Read commands
-      self.tar_MotorA = cmd.linear.x   #Porpulsion command
-      self.cmd_Servo  = cmd.angular.y  #Command for servo control
 
       #Get params function
       self.getparam()
 
       #Chose CtrlChoice
       self.CtrlChoice = cmd.linear.z
+   
+      #Read commands
+      self.tar_MotorA = cmd.linear.x   #Porpulsion command
+      self.cmd_Servo  = cmd.angular.y  #Command for servo control
+
 
     ##########################################################################################
     #                                                                                        #

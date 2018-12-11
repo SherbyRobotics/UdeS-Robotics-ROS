@@ -57,8 +57,7 @@
 
 // Servo objects for PWM control
 Servo steeringServo;
-Servo electronicSpeedControllerA ;  // The ESC on the TRAXXAS works like a Servo
-Servo electronicSpeedControllerB ;
+Servo electronicSpeedController ;  // The ESC on the TRAXXAS works like a Servo
 
 // ROS
 ros::NodeHandle  nodeHandle;
@@ -71,11 +70,11 @@ ros::Publisher chatter_cmd("arduino_debug_feedback", &cmdPub);
 //////////////////////////////////////////////////////////////////
 
 // Serial Communication
-const int baud_rate = 9600;
+const int baud_rate = 115200;
 
 // Slave Select pins for encoders 1 and 2
 // Feel free to reallocate these pins to best suit your circuit
-const int slaveSelectEnc1 = 53;
+const int slaveSelectEnc1 = 7;
 const int slaveSelectEnc2 = 8;
 
 // These hold the current encoder count.
@@ -83,9 +82,8 @@ signed long encoder1count = 0;
 signed long encoder2count = 0;
 
 // Pins for outputs
-const int ser  = 9;   // Servo 
-const int escA = 6;  // ESC
-const int escB = 5;
+const int ser = 9;   // Servo 
+const int esc = 10;  // ESC
 
 // Hardware min-zero-max range for the steering servo and the TRAXXAS ESC
 // arduino pwm-servo lib unit = 0-180 deg angle range corresponding to 544-2400 microseconds pulse-witdh
@@ -97,12 +95,8 @@ const int pwm_zer_esc = 90  ;
 const int pwm_max_esc = 180 ;
 
 // Conversion
-const double batteryV  = 8.4;
-const double maxTorque = 15;
-const double maxAngle  = 30*(2*3.1416)/360;    //max steering angle in rad
-const double rad2pwm   = (pwm_zer_ser-pwm_min_ser)/maxAngle;
-const double volt2pwm  = (pwm_zer_esc-pwm_min_esc)/batteryV;
-const double Nm2pwm    = (pwm_zer_esc-pwm_min_esc)/maxTorque;
+const double  rad2pwm = 60;
+const double volt2pwm = 30;
 
 ///////////////////////////////////////////////////////////////////
 
@@ -218,7 +212,7 @@ void clearEncoderCount() {
 }
 
 // Convertion function : Command --> PWM
-double cmd2pwm (double cmd, float slope, int pmw_min, int pwm_zer, int pwm_max) {
+double cmd2pwm (double cmd, double slope, int pmw_min, int pwm_zer, int pwm_max) {
   // Scale and offset
   double pwm_d = cmd * slope + (double) pwm_zer;
   // Rounding and conversion
@@ -235,57 +229,31 @@ double cmd2pwm (double cmd, float slope, int pmw_min, int pwm_zer, int pwm_max) 
 
 ///////////////////////////////////////////////////////////////////
 
-long pubWrite(int esc_pwmA, int esc_pwmB, int ser_pwm, int CtrlChoice){
-  
-  // Write PWM for the steering servo and both motorsZX
-  steeringServo.write(ser_pwm) ;  
-  electronicSpeedControllerA.write(esc_pwmA) ;
-  electronicSpeedControllerB.write(esc_pwmB) ;
-
-  // Debug feedback
-  cmdPub.linear.x = esc_pwmA;     //PWM Motor A
-  cmdPub.linear.y = esc_pwmB;     //PWM Motor B
-  cmdPub.linear.z = CtrlChoice;   //CtrlChoice (given by the propulsion algo)
-  cmdPub.angular.z = ser_pwm;     //PWM Servo
-  chatter_cmd.publish( &cmdPub );
-  
-}
-///////////////////////////////////////////////////////////////////
-
 // Main Loop
 void cmdCallback ( const geometry_msgs::Twist&  twistMsg )
 {
-  // Declaration
-  int esc_pwmA;
-  int esc_pwmB;
-  
   // Steering
   double ser_cmd   = twistMsg.angular.z; //rad
   int ser_pwm      = cmd2pwm( ser_cmd, rad2pwm, pwm_min_ser, pwm_zer_ser, pwm_max_ser) ;
+
+  steeringServo.write(ser_pwm) ;
   
   // ESC 
-  double esc_cmdA = twistMsg.linear.x; //volt
-  double esc_cmdB = twistMsg.linear.y;
-  int CtrlChoice  = twistMsg.linear.z;
-
-  // Call the right control loop
-  // Commands received in Volts (CC0, CC2, CC3, CC4, CC5, CC6, CC7)
-  if (CtrlChoice == 0 || CtrlChoice == 2 || CtrlChoice == 3 || CtrlChoice == 4 || CtrlChoice == 5 || CtrlChoice == 6 || CtrlChoice == 7 || CtrlChoice == 8){
-    int esc_pwmA    = cmd2pwm( esc_cmdA, volt2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ;
-    int esc_pwmB    = cmd2pwm( esc_cmdB, volt2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ;
-    pubWrite(esc_pwmA,esc_pwmB,ser_pwm,CtrlChoice);
-  }
-  // Commands received in Nm (CC1)
-  if (CtrlChoice == 1){
-    int esc_pwmA    = cmd2pwm( esc_cmdA, Nm2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ;
-    int esc_pwmB    = cmd2pwm( esc_cmdB, Nm2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ; 
-    pubWrite(esc_pwmA,esc_pwmB,ser_pwm,CtrlChoice);  
-  }
+  double esc_cmd = twistMsg.linear.x; //volt
+  int esc_pwm    = cmd2pwm( esc_cmd, volt2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ;
+    
+  electronicSpeedController.write(esc_pwm) ;
+  
+  
+  // Debug feedback
+  cmdPub.linear.x = esc_pwm;
+  cmdPub.angular.z = ser_pwm;
+  chatter_cmd.publish( &cmdPub );
   
 }
 
 // ROS suscriber
-ros::Subscriber<geometry_msgs::Twist> cmdSubscriber("/cmd_prop", &cmdCallback) ;
+ros::Subscriber<geometry_msgs::Twist> cmdSubscriber("/cmd_vel", &cmdCallback) ;
 
 
 ///////////////////////////////////////////////////////////////////
@@ -293,8 +261,7 @@ void setup(){
   
   // Init PWM output Pins
   steeringServo.attach(ser); 
-  electronicSpeedControllerA.attach(escA); 
-  electronicSpeedControllerB.attach(escB);
+  electronicSpeedController.attach(esc); 
   
   // Init Communication
   Serial.begin(baud_rate);
@@ -314,8 +281,7 @@ void setup(){
   
   // Initialize Steering and ESC cmd to neutral
   steeringServo.write(pwm_zer_ser) ;
-  electronicSpeedControllerA.write(pwm_zer_esc) ;
-  electronicSpeedControllerB.write(pwm_zer_esc) ;
+  electronicSpeedController.write(pwm_zer_esc) ;
   
   //
   delay(3000) ;
@@ -327,13 +293,13 @@ void loop(){
   nodeHandle.spinOnce();
   
   // Retrieve current encoder counters
-  encoder1count = readEncoder(1); 
-  encoder2count = -readEncoder(2);
+  encoder1count = -readEncoder(1); 
+  encoder2count = readEncoder(2);
     
   // Publish counts
   encdPub.linear.x = encoder1count;
   encdPub.linear.y = encoder2count;
   chatter_encd.publish( &encdPub );
   
-  delay(90);
+  delay(1);
 }

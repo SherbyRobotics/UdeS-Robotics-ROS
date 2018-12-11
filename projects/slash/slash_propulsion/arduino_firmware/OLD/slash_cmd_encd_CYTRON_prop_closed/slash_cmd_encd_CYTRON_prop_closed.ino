@@ -44,7 +44,7 @@
 
 /////////////////////////////////////////////////////////////////
 #include "Arduino.h"
-#include <SPI.h>
+#include <SPI.h> 
 #include <Servo.h> 
 #define USB_USBCON
 #include <ros.h>
@@ -57,8 +57,6 @@
 
 // Servo objects for PWM control
 Servo steeringServo;
-Servo electronicSpeedControllerA ;  // The ESC on the TRAXXAS works like a Servo
-Servo electronicSpeedControllerB ;
 
 // ROS
 ros::NodeHandle  nodeHandle;
@@ -75,7 +73,7 @@ const int baud_rate = 9600;
 
 // Slave Select pins for encoders 1 and 2
 // Feel free to reallocate these pins to best suit your circuit
-const int slaveSelectEnc1 = 53;
+const int slaveSelectEnc1 = 7;
 const int slaveSelectEnc2 = 8;
 
 // These hold the current encoder count.
@@ -83,27 +81,30 @@ signed long encoder1count = 0;
 signed long encoder2count = 0;
 
 // Pins for outputs
-const int ser  = 9;   // Servo 
-const int escA = 6;  // ESC
-const int escB = 5;
+const int ser = 9;   // Servo 
+const int motA = 6;  // Motor R
+const int motB = 5;  // Motor L
+const int dirA = 4;  // Direction motor R
+const int dirB = 3;  // Direction motor L
 
-// Hardware min-zero-max range for the steering servo and the TRAXXAS ESC
+// Hardware min-zero-max range for the steering servo and the Cytron drive
 // arduino pwm-servo lib unit = 0-180 deg angle range corresponding to 544-2400 microseconds pulse-witdh
 const int pwm_min_ser = 30  ;
 const int pwm_zer_ser = 90  ;
 const int pwm_max_ser = 150 ;
-const int pwm_min_esc = 0   ;
-const int pwm_zer_esc = 90  ;
-const int pwm_max_esc = 180 ;
+
+const int pwm_min_cmd = 25 ;
+const int pwm_max_cmd = 255 ;
+
+// From_max param init. for the different control loops
+const float batteryV = 8.4;   //Battery voltage in Volts (for CC0)
+const int   vel_max  = 15;    //Max velocity in m/s      (for CC1)
 
 // Conversion
-const double batteryV  = 8.4;
-const double maxTorque = 15;
-const double maxAngle  = 30*(2*3.1416)/360;    //max steering angle in rad
-const double rad2pwm   = (pwm_zer_ser-pwm_min_ser)/maxAngle;
-const double volt2pwm  = (pwm_zer_esc-pwm_min_esc)/batteryV;
-const double Nm2pwm    = (pwm_zer_esc-pwm_min_esc)/maxTorque;
+const double  rad2pwm = 360/(2*3.1416);
 
+///////////////////////////////////////////////////////////////////
+//                        ENCODERS                               //
 ///////////////////////////////////////////////////////////////////
 
 void initEncoders() {
@@ -142,6 +143,8 @@ void initEncoders() {
   digitalWrite(slaveSelectEnc2,HIGH);       // Terminate SPI conversation 
 }
 
+///////////////////////////////////////////////////////////////////
+
 long readEncoder(int encoder) {
   
   // Initialize temporary variables for SPI read
@@ -177,6 +180,8 @@ long readEncoder(int encoder) {
   
   return count_value;
 }
+
+///////////////////////////////////////////////////////////////////
 
 void clearEncoderCount() {
     
@@ -217,8 +222,10 @@ void clearEncoderCount() {
   digitalWrite(slaveSelectEnc2,HIGH);     // Terminate SPI conversation 
 }
 
-// Convertion function : Command --> PWM
-double cmd2pwm (double cmd, float slope, int pmw_min, int pwm_zer, int pwm_max) {
+///////////////////////////////////////////////////////////////////
+
+// Convertion function : Command Servo --> PWM
+double cmd2pwm (double cmd, double slope, int pmw_min, int pwm_zer, int pwm_max) {
   // Scale and offset
   double pwm_d = cmd * slope + (double) pwm_zer;
   // Rounding and conversion
@@ -235,18 +242,58 @@ double cmd2pwm (double cmd, float slope, int pmw_min, int pwm_zer, int pwm_max) 
 
 ///////////////////////////////////////////////////////////////////
 
-long pubWrite(int esc_pwmA, int esc_pwmB, int ser_pwm, int CtrlChoice){
+// Direction function (Low-->Backward or High-->Forward)
+int lowHigh(double cmd) {
+  int forward;
+  
+  if (cmd >= 0) {
+    int forward = 1;
+    return forward;
+  }
+  
+  if (cmd < 0) {
+    int forward = 0;
+    return forward; 
+  }
+   
+}///////////////////////////////////////////////////////////////////
+
+// Convertion function: Command --> PWM Motors
+double cmd2cyt(double cmd, float from_min, float from_max, int to_min, int to_max) {
+  float pwm_f;
+  int pwm;
+  
+  if (cmd >= 0) {
+    float pwm_f = cmd*to_max/from_max;
+    int pwm = (int) pwm_f;
+    return pwm;
+  }
+  
+  if (cmd < 0) {
+    float pwm_f = -cmd*to_max/from_max;
+    int pwm = (int) pwm_f;
+    return pwm; 
+  }
+   
+}
+
+
+///////////////////////////////////////////////////////////////////
+
+long pubWrite(int cytron_pwmA, int cytron_pwmB, int ser_pwm, int forwardA, int forwardB, int CtrlChoice){
   
   // Write PWM for the steering servo and both motorsZX
-  steeringServo.write(ser_pwm) ;  
-  electronicSpeedControllerA.write(esc_pwmA) ;
-  electronicSpeedControllerB.write(esc_pwmB) ;
+  steeringServo.write(ser_pwm) ;
+  analogWrite(motA,cytron_pwmA);
+  analogWrite(motB,cytron_pwmB);
 
   // Debug feedback
-  cmdPub.linear.x = esc_pwmA;     //PWM Motor A
-  cmdPub.linear.y = esc_pwmB;     //PWM Motor B
-  cmdPub.linear.z = CtrlChoice;   //CtrlChoice (given by the propulsion algo)
-  cmdPub.angular.z = ser_pwm;     //PWM Servo
+  cmdPub.linear.x = cytron_pwmA;     //PWM Motor A
+  cmdPub.linear.y = cytron_pwmB;     //PWM Motor B
+  cmdPub.linear.z = CtrlChoice;      //CtrlChoice (given by the propulsion algo)
+  cmdPub.angular.x = forwardA;       //Direction A
+  cmdPub.angular.y = forwardB;       //Direction B
+  cmdPub.angular.z = ser_pwm;        //PWM Servo
   chatter_cmd.publish( &cmdPub );
   
 }
@@ -256,45 +303,108 @@ long pubWrite(int esc_pwmA, int esc_pwmB, int ser_pwm, int CtrlChoice){
 void cmdCallback ( const geometry_msgs::Twist&  twistMsg )
 {
   // Declaration
-  int esc_pwmA;
-  int esc_pwmB;
+  int cytron_pwmA;
+  int cytron_pwmB;
+  
+  // CtrlChoice definition
+  int CtrlChoice   = twistMsg.linear.z;
   
   // Steering
-  double ser_cmd   = twistMsg.angular.z; //rad
+  double ser_cmd   = twistMsg.angular.z; //Read servo cmd in rad
   int ser_pwm      = cmd2pwm( ser_cmd, rad2pwm, pwm_min_ser, pwm_zer_ser, pwm_max_ser) ;
-  
-  // ESC 
-  double esc_cmdA = twistMsg.linear.x; //volt
-  double esc_cmdB = twistMsg.linear.y;
-  int CtrlChoice  = twistMsg.linear.z;
+
+  // Cytron Drive 
+  double cytron_cmdA = twistMsg.linear.x; //Read motor A cmd 
+  double cytron_cmdB = twistMsg.linear.y; //Read motor B cmd
+
+  float from_min     = 0;
 
   // Call the right control loop
-  // Commands received in Volts (CC0, CC2, CC3, CC4, CC5, CC6, CC7)
-  if (CtrlChoice == 0 || CtrlChoice == 2 || CtrlChoice == 3 || CtrlChoice == 4 || CtrlChoice == 5 || CtrlChoice == 6 || CtrlChoice == 7 || CtrlChoice == 8){
-    int esc_pwmA    = cmd2pwm( esc_cmdA, volt2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ;
-    int esc_pwmB    = cmd2pwm( esc_cmdB, volt2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ;
-    pubWrite(esc_pwmA,esc_pwmB,ser_pwm,CtrlChoice);
+  // Openloop control in volts (CC0)
+  if (CtrlChoice == 0){
+    float from_max    = batteryV;
+    int forwardA      = lowHigh(cytron_cmdA);
+    digitalWrite(dirA,forwardA);
+    int forwardB      = lowHigh(cytron_cmdB);
+    digitalWrite(dirB,forwardB);
+    int cytron_pwmA   = cmd2cyt(cytron_cmdA, from_min, from_max, pwm_min_cmd, pwm_max_cmd);
+    int cytron_pwmB   = cmd2cyt(cytron_cmdB, from_min, from_max, pwm_min_cmd, pwm_max_cmd);
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
   }
-  // Commands received in Nm (CC1)
+  // Openloop control in m/s (CC1)
   if (CtrlChoice == 1){
-    int esc_pwmA    = cmd2pwm( esc_cmdA, Nm2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ;
-    int esc_pwmB    = cmd2pwm( esc_cmdB, Nm2pwm, pwm_min_esc, pwm_zer_esc, pwm_max_esc) ; 
-    pubWrite(esc_pwmA,esc_pwmB,ser_pwm,CtrlChoice);  
+    float from_max    = vel_max;
+    int forwardA      = lowHigh(cytron_cmdA);
+    int forwardB      = lowHigh(cytron_cmdB);
+    int cytron_pwmA   = cmd2cyt(cytron_cmdA, from_min, from_max, pwm_min_cmd, pwm_max_cmd);
+    int cytron_pwmB   = cmd2cyt(cytron_cmdB, from_min, from_max, pwm_min_cmd, pwm_max_cmd);
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
   }
-  
+  // Closedloop control for position in m (CC3)
+  if (CtrlChoice == 3){
+    float targA       = twistMsg.angular.x; //Read the targeted position of motor A
+    float targB       = twistMsg.angular.y; //Read the targeted position of motor B
+    int forwardA      = lowHigh(cytron_cmdA);
+    int forwardB      = lowHigh(cytron_cmdB);
+    int cytron_pwmA   = cmd2cyt(cytron_cmdA, from_min, targA, pwm_min_cmd, pwm_max_cmd/2); //pwm_max_cmd is divided by 2 to ensure the wheels won't slip at the beginning!**Might need to limit the acceleration**
+    int cytron_pwmB   = cmd2cyt(cytron_cmdB, from_min, targB, pwm_min_cmd, pwm_max_cmd/2);
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
+  }
+  // Closedloop control for velocity in m/s (CC4)
+  if (CtrlChoice == 4){
+    float targA       = twistMsg.angular.x; //Read the targeted velocity for motor A
+    float targB       = twistMsg.angular.y; //Read the targeted velocity for motor B
+    int forwardA      = lowHigh(cytron_cmdA);
+    int forwardB      = lowHigh(cytron_cmdB);
+    int cytron_pwmA   = cmd2cyt(cytron_cmdA, from_min, targA, pwm_min_cmd, pwm_max_cmd); //**Might need to limit the acceleration**
+    int cytron_pwmB   = cmd2cyt(cytron_cmdB, from_min, targB, pwm_min_cmd, pwm_max_cmd);
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
+  }
+    // Closedloop control for velocity in rad/s (CC5)
+  if (CtrlChoice == 5){
+    float targA       = twistMsg.angular.x; //Read the targeted velocity for motor A
+    float targB       = twistMsg.angular.y; //Read the targeted velocity for motor B
+    int forwardA      = lowHigh(cytron_cmdA);
+    int forwardB      = lowHigh(cytron_cmdB);
+    int cytron_pwmA   = cytron_cmdA; //**Might need to limit the acceleration**
+    int cytron_pwmB   = cytron_cmdB;
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
+  }
+      // Closedloop control for position in rad (CC6)
+  if (CtrlChoice == 6){
+    float targA       = twistMsg.angular.x; //Read the targeted position for motor A
+    float targB       = twistMsg.angular.y; //Read the targeted position for motor B
+    int forwardA      = lowHigh(cytron_cmdA);
+    int forwardB      = lowHigh(cytron_cmdB);
+    int cytron_pwmA   = cytron_cmdA; //**Might need to limit the acceleration**
+    int cytron_pwmB   = cytron_cmdB;
+    pubWrite(cytron_pwmA,cytron_pwmB,ser_pwm,forwardA,forwardB,CtrlChoice);
+  }
 }
 
 // ROS suscriber
 ros::Subscriber<geometry_msgs::Twist> cmdSubscriber("/cmd_prop", &cmdCallback) ;
 
-
 ///////////////////////////////////////////////////////////////////
+
 void setup(){
+   
+  // Init PWM output Pins
+  pinMode(motA, OUTPUT);
+  pinMode(motB, OUTPUT);
+  pinMode(dirA, OUTPUT);
+  pinMode(dirB, OUTPUT);
+   // Initialize Steering and Drive cmd to neutral
+  digitalWrite(dirA, HIGH);
+  digitalWrite(dirB, HIGH);
+  // Init Cytron Drive
+  int cytron_pwm = 0;
+  analogWrite(motA,cytron_pwm);
+  analogWrite(motB,cytron_pwm);
+  steeringServo.write(pwm_zer_ser);
   
   // Init PWM output Pins
   steeringServo.attach(ser); 
-  electronicSpeedControllerA.attach(escA); 
-  electronicSpeedControllerB.attach(escB);
   
   // Init Communication
   Serial.begin(baud_rate);
@@ -308,14 +418,9 @@ void setup(){
   // Subscribe to the steering and throttle messages
   nodeHandle.subscribe(cmdSubscriber) ;
   // This can be useful for debugging purposes
-  nodeHandle.advertise(chatter_encd);
   nodeHandle.advertise(chatter_cmd);
+  nodeHandle.advertise(chatter_encd);
   
-  
-  // Initialize Steering and ESC cmd to neutral
-  steeringServo.write(pwm_zer_ser) ;
-  electronicSpeedControllerA.write(pwm_zer_esc) ;
-  electronicSpeedControllerB.write(pwm_zer_esc) ;
   
   //
   delay(3000) ;
@@ -323,17 +428,18 @@ void setup(){
 }
 
 ////////////////////////////////////////////////////////////////////
+
 void loop(){
   nodeHandle.spinOnce();
-  
+
   // Retrieve current encoder counters
-  encoder1count = readEncoder(1); 
-  encoder2count = -readEncoder(2);
+  encoder1count = -readEncoder(1); 
+  encoder2count = readEncoder(2);
     
   // Publish counts
   encdPub.linear.x = encoder1count;
   encdPub.linear.y = encoder2count;
   chatter_encd.publish( &encdPub );
   
-  delay(90);
+  delay(1);
 }

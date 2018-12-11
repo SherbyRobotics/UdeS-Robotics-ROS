@@ -75,7 +75,7 @@ const int baud_rate = 9600;
 
 // Slave Select pins for encoders 1 and 2
 // Feel free to reallocate these pins to best suit your circuit
-const int slaveSelectEnc1 = 53;
+const int slaveSelectEnc1 = 7;
 const int slaveSelectEnc2 = 8;
 
 // These hold the current encoder count.
@@ -335,5 +335,5 @@ void loop(){
   encdPub.linear.y = encoder2count;
   chatter_encd.publish( &encdPub );
   
-  delay(90);
+  delay(50);
 }
