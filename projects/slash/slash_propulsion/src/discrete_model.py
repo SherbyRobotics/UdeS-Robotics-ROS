@@ -37,12 +37,16 @@ class propulsion_model(object):
 	def cmdread(self,data):
 
 			cmd = data.linear.x
-			if (cmd == 90):
+			if (cmd >= 90 && cmd<=110):
 				self.V = 0
-				self.b = 0.005
-			else:
+				self.b = 0.01036
+			elif (cmd >= 111 && cmd <= 126):
 				self.V   = 0.000028424*cmd**3-0.012945569*cmd**2+2.025529854*cmd-102.8750848
-				self.b   = -0.0015483*self.V**3+0.015424*self.V**2-0.05168*self.V+0.060562
+				self.b   = -0.0013411*self.V**3+0.011976*self.V**2-0.036401*self.V+0.040378
+			elif (cmd >= 127 && cmd <= 158):
+				self.V   = 0.000028424*cmd**3-0.012945569*cmd**2+2.025529854*cmd-102.8750848
+				self.b   = -0.00009239*self.V+0.0023315
+
 
 	#######################################
 	def callback(self,data):
