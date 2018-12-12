@@ -1,9 +1,0 @@
-
-t_last = 0
-omega_last = 0
-omega = []
-t     = []
-i     = []
-T     = []
-
-for s in range(
