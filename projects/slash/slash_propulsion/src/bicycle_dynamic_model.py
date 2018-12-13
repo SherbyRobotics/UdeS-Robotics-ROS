@@ -16,14 +16,16 @@ class propulsion_model(object):
 			# Model param
 			self.t_last = 0
 			self.omega_last = 0
-			self.R  = 0.63
-			self.k  = 0.002791
-			self.r  = 0.054
-			self.gR = 15.3
-			self.J  = 0.020881
-			self.V  = 0
-			self.b  = 0
-			self.L  = 0.4
+			self.R   = 0.63
+			self.k   = 0.002791
+			self.r   = 0.054
+			self.gR  = 15.3
+			self.J   = 0.020881
+			self.V   = 0
+			self.b   = 0
+			self.L   = 0.4
+			self.cmd = 0
+			self.ser = 0 
 			self.t_init = rospy.get_time()
 			self.x_last     = 0
 			self.y_last     = 0
@@ -32,24 +34,29 @@ class propulsion_model(object):
 			# Init subscribers  
 			self.sub_ard    = rospy.Subscriber("arduino_debug_feedback", Twist, self.cmdread, queue_size=1)
 			self.sub_vel    = rospy.Subscriber("vel_info", Twist , self.callback, queue_size=1)
+			self.sub_cmd    = rospy.Subscriber("cmd_prop", Twist , self.cmdProp, queue_size=1)
 
         	# Init publisher    
 			self.pub_model  = rospy.Publisher("model_vel", Twist , queue_size=1)
 		
 
 	#######################################
+	def cmdProp(self,data):
+
+			self.ser = data.angular.z
+
+	#######################################
 	def cmdread(self,data):
 
 			self.cmd = data.linear.x
-			self.ser = data.angular.z
-			if (cmd >= 90 and cmd<=110):
+			if (self.cmd >= 90 and self.cmd<=110):
 				self.V = 0
 				self.b = 0.01036
-			elif (cmd >= 111 and cmd <= 126):
-				self.V   = 0.000028424*cmd**3-0.012945569*cmd**2+2.025529854*cmd-102.8750848
+			elif (self.cmd >= 111 and self.cmd <= 126):
+				self.V   = 0.000028424*self.cmd**3-0.012945569*self.cmd**2+2.025529854*self.cmd-102.8750848
 				self.b   = -0.0013411*self.V**3+0.011976*self.V**2-0.036401*self.V+0.040378
-			elif (cmd >= 127 and cmd <= 158):
-				self.V   = 0.000028424*cmd**3-0.012945569*cmd**2+2.025529854*cmd-102.8750848
+			elif (self.cmd >= 127 and self.cmd <= 158):
+				self.V   = 0.000028424*self.cmd**3-0.012945569*self.cmd**2+2.025529854*self.cmd-102.8750848
 				self.b   = -0.00009239*self.V+0.0023315
 
 
@@ -62,9 +69,9 @@ class propulsion_model(object):
 
 
 		#State estimation
-			x      = omega*self.r*np.cos(self.theta_last)+self.x_last
-			y      = omega*self.r*np.sin(self.theta_last)+self.y_lasy
-			theta  = (omega*self.r*np.tan(self.ser))/self.L+self.theta_last
+			x      = omega*self.r*np.cos(self.theta_last)*(t-self.t_last)+self.x_last
+			y      = omega*self.r*np.sin(self.theta_last)*(t-self.t_last)+self.y_last
+			theta  = (omega*self.r*np.tan(self.ser))/self.L*(t-self.t_last)+self.theta_last
 
 		#Re-initialization
 			self.t_last     = t
@@ -74,17 +81,16 @@ class propulsion_model(object):
 			self.theta_last = theta
 
       		#Init model msg
-			model = Twist()
+			msg = Twist()
       
       		#Msg
-			model.linear.x   = x  	 #Model States
-			model.linear.y   = y
-			model.linear.z   = theta
-			model.angular.x  = omega #Model velocity
-			model.angular.x  = t     #Model time
+			msg.linear.x   = x  	 #Model States
+			msg.linear.y   = y
+			msg.linear.z   = theta
+			msg.angular.x  = omega #Model velocity
 
       		# Publish cmd msg
-			self.pub_model.publish(model)
+			self.pub_model.publish(msg)
 
 #########################################
 

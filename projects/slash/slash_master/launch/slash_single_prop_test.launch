@@ -17,7 +17,7 @@
     <param name="KiCC5" value="0.07"/>
   </node>
 
-  <node pkg="slash_propulsion" type="discrete_model.py" name="MODEL" output="screen">
+  <node pkg="slash_propulsion" type="bicycle_dynamic_model.py" name="MODEL" output="screen">
   </node>
 
   <node pkg="slash_planif" type="planif_single_prop.py" name="PLANIFICATION" output="screen">
