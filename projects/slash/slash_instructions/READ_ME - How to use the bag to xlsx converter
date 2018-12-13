@@ -1,0 +1,16 @@
+*******************************************************************
+*                                                                 *
+*----------------BAG TO XLSX LAUNCH FILE INSTRUCTIONS-------------*
+*                                                                 *
+*******************************************************************
+
+1. Start by running any launch file in slash_master/launch that has the terminalogy xxxxxxx_log.launch in a terminal to create a bag file.
+2. A bag file is created at ~/projects/slash/slash_datalogging/bagfiles/ with the name DataBag_AAAA-MM-JJ-HH-MM-SS.bag recording ALL topics that are being plublished.
+3. To convert the bag file to a xlsx file, copy the name of the bag file and run the following command in a terminal:
+
+   roslaunch slash_master bag_to_xlsx.launch BagName:=(paste the bagfile name here *without .bag*) XlsxName:=Name_Of_Your_Choice
+
+4. The xlsx file is now created at ~/projects/slash/slash_datalogging/xlsxfiles/   
+
+
+NOTE I: Go to ~/projects/slash/slash_datalogging/src/ to find the python script that converts the bag file into a xlsx file. Double check which of these converters are in the bag_to_xlsx.launch file and create or modify the CONVERTER python script to please your needs.

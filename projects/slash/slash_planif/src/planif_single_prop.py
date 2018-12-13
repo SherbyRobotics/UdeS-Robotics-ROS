@@ -42,14 +42,6 @@ class planif(object):
         self.cmd2vel   = rospy.get_param("~cmd2vel", 15)   #Determined by the propulsion model ***Needs to be tuned for each vehicle***
         self.maxStAng  = rospy.get_param("~strAngle", 30)  #Supposing +/- 30 degrees max for the steering angle
         self.cmd2rad   = self.maxStAng*2*3.1416/360 
-
-        # Init targeted values for closedloop control    
-        self.t_MA_A = rospy.get_param("~t_MA_A", 20) #Targeted current (A) for MotorA
-        self.t_MA_m = rospy.get_param("~t_MA_m", 2)  #Targeted position (m) for MotorA
-        self.t_MA_v = rospy.get_param("~t_MA_v", 1)  #Targeted velocity (m/s) for MotorA
-        self.t_MA_w = rospy.get_param("~t_MA_w", 20) #Targeted angular velocity (rad/s) for MotorA
-        self.t_MA_r = rospy.get_param("~t_MA_r", 1)  #Targeted angular position (rad) for MotorA
-        self.t_MA_T = rospy.get_param("~t_MA_r", 15) #Targeted Torque (Nm) for MotorA
  
 
     #######################################

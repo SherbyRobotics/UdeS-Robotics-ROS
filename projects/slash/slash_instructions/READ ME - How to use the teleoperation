@@ -1,0 +1,60 @@
+*******************************************************************
+*                                                                 *
+*----------------TELEOPERATION CONTROL INSTRUCTIONS---------------*
+*                                                                 *
+*******************************************************************	
+
+NOTE: If no buttons are pressed (no control choice is made), moving the joysticks will not make the vehicle move.
+
+PRESS LEFT BUTTON
+	*********************      CC0 - Openloop control of the vehicle in Voltage      ***************************
+
+	-Right joystick controls throttle in open loop of the voltage (-8V to 8V)
+	-Left joystick controls steering angle
+
+PRESS RIGHT BUTTON
+	*************     CC1 - Closedloop control of the velocity with variable set points      *******************
+
+	-Right joystick controls the velocity in closedloop (+/-40 rad/s)(+/-2.16 m/s)(+/-7.78 km/h) The max velocity is adjustable in slash_teleop.py
+	-Left joystick controls steering angle
+
+PRESS A
+	*********************      CC2 - Fixed velocity closedloop control at 20 rad/s      ************************
+
+	-As long as A is pressed, a 20 rad/s set point is use
+	-Left joystick controls steering angle
+
+PRESS B
+	*********************      CC2 - Fixed velocity closedloop control at 25 rad/s      ************************
+
+	-As long as B is pressed, a 25 rad/s set point is use
+	-Left joystick controls steering angle
+
+PRESS Y
+	*********************      CC2 - Fixed velocity closedloop control at 30 rad/s      ************************
+
+	-As long as Y is pressed, a 30 rad/s set point is use
+	-Left joystick controls steering angle
+
+PRESS X
+	*********************      CC2 - Fixed velocity closedloop control at 35 rad/s      ************************
+
+	-As long as X is pressed, a 35 rad/s set point is use
+	-Left joystick controls steering angle
+
+PRESS DOWN ARROW
+	*********************   CC3 - Fixed position closedloop control at 100 rad (5.4m)   ************************
+
+	-As long as the down arrow is pressed, the vehicle will try to reach a 100 rad distance travel
+	-Left joystick controls steering angle
+
+PRESS LEFT TRIGGER
+	*********************                Tank Drive control                    ***************************
+	-Right joystick controls the throttle of the right motor in openloop Voltage 
+	-Left joystick controlsthe throttle of the left motor in openloop Voltage
+	-The mean of both joystick x-axis values controls the steering angle
+
+
+
+
+

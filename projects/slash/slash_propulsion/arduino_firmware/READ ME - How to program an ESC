@@ -9,7 +9,7 @@
 
 CAUTION!: DO NOT PLUG THE RED WIRE OF THE ESC, IT WILL DAMAGE THE MICROCONTROLLER!!!
 
-3- For both the single and the dual propulsion vehicles, flash the slash_cmd_encd_dual_ESC firmware on the Arduino
+3- For both the single and the dual propulsion vehicles, flash the slash_firmware on the Arduino
 
 4- Open a new terminal and run either the slash_single_prop.launch or the slash_dual_prop.launch from the slash_master package
 

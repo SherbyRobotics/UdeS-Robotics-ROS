@@ -5,9 +5,11 @@
 
 1- Wire the black ESC wire to the Arduino's ground
 
-2- Wire the red ESC wire to the desired PWM pin on the Arduino (for this project the right ESC is plugged to pin 6 and the left ESC is plugged to pin 5 for the dual propulsion and the ESC of the single propulsion is plugged to pin 6)
+2- Wire the white ESC wire to the desired PWM pin on the Arduino (for this project the right ESC is plugged to pin 6 and the left ESC is plugged to pin 5 for the dual propulsion and the ESC of the single propulsion is plugged to pin 6)
 
-CAUTION!: DO NOT PLUG THE RED WIRE OF THE ESC, IT WILL DAMAGE THE MICROCONTROLLER!!!
+3- Wire the red wire of the ESC to the red wire of the steering servo, the black wire of the steering servo to ground and the white wire of the steering servo to the disered PWM pin (here, 9).
+
+CAUTION!: NEVER PLUG THE RED WIRE OF THE ESC TO THE ARDUINO, IT WILL DAMAGE THE MICROCONTROLLER!!!
 
 3- For both the single and the dual propulsion vehicles, flash the slash_cmd_encd_dual_ESC firmware on the Arduino
 
@@ -34,5 +36,5 @@ CAUTION!: Ensure you know the ESC's mode that you're using. To chose the modes, 
                    -Mode 2: Race Mode (100% Forward, 100% Brake, NO Reverse)
                     Hold the "EZ Set" button until red light blinks twice
 
-                   -Mode 3: Training Mode (50% Forward, 100% Brake, 50% Reverse) **THIS IS THE MODE USED ON BOTH VEHICLES**
+                   -Mode 3: Training Mode (50% Forward, 100% Brake, 50% Reverse) **THIS IS THE MODE USED ON BOTH VEHICLES**THE ESC/VOLTAGE MAPPING HAS BEEN MADE WITH THIS SETTING**
                     Hold the "EZ Set" button until red light blinks three times                    
