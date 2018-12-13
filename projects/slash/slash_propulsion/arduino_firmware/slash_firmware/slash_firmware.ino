@@ -75,8 +75,8 @@ const int baud_rate = 9600;
 
 // Slave Select pins for encoders 1 and 2
 // Feel free to reallocate these pins to best suit your circuit
-const int slaveSelectEnc1 = 53;
-const int slaveSelectEnc2 = 8;
+const int slaveSelectEnc1 = 45;
+const int slaveSelectEnc2 = 43;
 
 // These hold the current encoder count.
 signed long encoder1count = 0;

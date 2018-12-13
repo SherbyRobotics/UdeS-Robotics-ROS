@@ -42,10 +42,10 @@ PRESS X
 	-As long as X is pressed, a 35 rad/s set point is use
 	-Left joystick controls steering angle
 
-PRESS DOWN ARROW
+PRESS UP ARROW
 	*********************   CC3 - Fixed position closedloop control at 100 rad (5.4m)   ************************
 
-	-As long as the down arrow is pressed, the vehicle will try to reach a 100 rad distance travel
+	-As long as the up arrow is pressed, the vehicle will try to reach a 100 rad distance travel
 	-Left joystick controls steering angle
 
 PRESS LEFT TRIGGER (ONLY FOR THE DUAL PROPULSION VEHICLE)

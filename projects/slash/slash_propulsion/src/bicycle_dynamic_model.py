@@ -18,7 +18,7 @@ class propulsion_model(object):
 			self.omega_last = 0
 			self.R   = 0.63
 			self.k   = 0.002791
-			self.r   = 0.054
+			self.r   = 0.0538
 			self.gR  = 15.3
 			self.J   = 0.020881
 			self.V   = 0

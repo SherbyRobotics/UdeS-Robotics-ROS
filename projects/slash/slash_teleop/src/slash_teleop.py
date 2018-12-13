@@ -34,6 +34,15 @@ class teleop(object):
         self.cmd_msg.angular.z = cmd_ser*self.cmd2rad
 
     ####################################### 
+
+    def pubCmdTank(self,cmd_MA,cmd_MB,cmd_ser):
+        
+        self.cmd_msg.linear.x = cmd_MA  
+        self.cmd_msg.linear.y = cmd_MB 
+        
+        self.cmd_msg.angular.z = cmd_ser*self.cmd2rad
+
+    ####################################### 
         
     def joy_callback( self, joy_msg ):
         """ 
@@ -131,7 +140,7 @@ class teleop(object):
     #######################################
 
         #If bottom arrow is active
-        elif(joy_msg.axes[5] < 0):   
+        elif(joy_msg.axes[5] == 1):   
             
             enable = True
             self.cmd_msg.linear.z = 2    #CtrlChoice
@@ -147,7 +156,7 @@ class teleop(object):
             enable = True
             self.cmd_msg.linear.z = 3   #CtrlChoice
             cmd_ser = (ser_DA+ser_DB)/2
-            self.pubCmd(cmd_MA,cmd_MB,cmd_ser)
+            self.pubCmdTank(cmd_MA,cmd_MB,cmd_ser)
 
 
 

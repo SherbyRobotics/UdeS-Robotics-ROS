@@ -75,8 +75,8 @@ class propulsion(object):
         self.gearR    = rospy.get_param("~gearR", 15.3) #Gear ratio
 
         # Gains for CC1 (Closed loop in rad/s)
-        self.KpCC1    = rospy.get_param("~KpCC1", 0.15) #Proportional gain for angular velocity control  
-        self.KiCC1    = rospy.get_param("~KiCC1", 0.00) #Integral gain for angular velocity control
+        self.KpCC1    = rospy.get_param("~KpCC1", 0.10) #Proportional gain for angular velocity control  
+        self.KiCC1    = rospy.get_param("~KiCC1", 0.06) #Integral gain for angular velocity control
 
         # Gains for CC2 (Closed loop in rad)
         self.KpCC2    = rospy.get_param("~KpCC2", 0.25) #Proportional gain for angular position control  
