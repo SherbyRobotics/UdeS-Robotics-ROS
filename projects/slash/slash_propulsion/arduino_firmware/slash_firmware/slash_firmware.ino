@@ -233,17 +233,45 @@ double ser2pwm (double cmd, float slope, int pmw_min, int pwm_zer, int pwm_max) 
 // Convertion function : Command --> PWM
 double cmd2pwm (double cmd, float slope, int pmw_min, int pwm_zer, int pwm_max) {
   // Scale and offset
-  double pwm_d = 0.17555*pow(cmd,3)-0.49043*pow(cmd,2)+5.2726*cmd+104.55;
-  // Rounding and conversion
-  int pwm = (int) ( pwm_d + 0.5 );
-  // Saturations
-  if (pwm < pmw_min) { 
+  if ((cmd>-0.62)&&(cmd < 0.62)){
+    double pwm_d = 27.419*cmd+90;
+    // Rounding and conversion
+    int pwm = (int) ( pwm_d + 0.5 );
+    // Saturations
+    if (pwm < pmw_min) { 
+      pwm = pmw_min;
+    }
+    if (pwm > pwm_max) {
+      pwm = pwm_max;
+    }
+    return pwm;
+  }
+  if (cmd <= -0.62){
+    double pwm_d = -0.16997*pow(cmd,3)-1.2083*pow(cmd,2)+3.7443*cmd+75.366;
+    // Rounding and conversion
+    int pwm = (int) ( pwm_d + 0.5 );
+     // Saturations
+    if (pwm < pmw_min) { 
+      pwm = pmw_min;
+    }
+    if (pwm > pwm_max) {
+      pwm = pwm_max;
+    }
+    return pwm;
+  }
+  if (cmd >= 0.62){
+    double pwm_d = 0.17555*pow(cmd,3)-0.49043*pow(cmd,2)+5.2726*cmd+104.55;
+    // Rounding and conversion
+    int pwm = (int) ( pwm_d + 0.5 );
+    // Saturations
+    if (pwm < pmw_min) { 
     pwm = pmw_min;
+    }
+    if (pwm > pwm_max) {
+     pwm = pwm_max;
+    }
+    return pwm;
   }
-  if (pwm > pwm_max) {
-    pwm = pwm_max;
-  }
-  return pwm;
 }
 
 ///////////////////////////////////////////////////////////////////

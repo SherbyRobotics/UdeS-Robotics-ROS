@@ -49,15 +49,22 @@ class propulsion_model(object):
 	def cmdread(self,data):
 
 			self.cmd = data.linear.x
-			if (self.cmd >= 90 and self.cmd<=110):
-				self.V = 0
-				self.b = 0.01036
+
+			if (self.cmd >= 23 and self.cmd <=53):
+				self.V  = 0.00036993*self.cmd**3-0.068285*self.cmd**2+4.3291*self.cmd-96.469
+				self.b  = 0.00009239*self.V+0.0023315
+			elif (self.cmd >= 54 and self.cmd <=69):
+				self.V  = 0.00036993*self.cmd**3-0.068285*self.cmd**2+4.3291*self.cmd-96.469
+				self.b  = 0.0013411*self.V**3+0.011976*self.V**2+0.036401*self.V+0.040378
+			elif (self.cmd >= 70 and self.cmd<=110):
+				self.V  = 0
+				self.b  = 0.01036
 			elif (self.cmd >= 111 and self.cmd <= 126):
-				self.V   = 0.000028424*self.cmd**3-0.012945569*self.cmd**2+2.025529854*self.cmd-102.8750848
-				self.b   = -0.0013411*self.V**3+0.011976*self.V**2-0.036401*self.V+0.040378
+				self.V  = 0.000028424*self.cmd**3-0.012945569*self.cmd**2+2.025529854*self.cmd-102.8750848
+				self.b  = -0.0013411*self.V**3+0.011976*self.V**2-0.036401*self.V+0.040378
 			elif (self.cmd >= 127 and self.cmd <= 158):
-				self.V   = 0.000028424*self.cmd**3-0.012945569*self.cmd**2+2.025529854*self.cmd-102.8750848
-				self.b   = -0.00009239*self.V+0.0023315
+				self.V  = 0.000028424*self.cmd**3-0.012945569*self.cmd**2+2.025529854*self.cmd-102.8750848
+				self.b  = -0.00009239*self.V+0.0023315
 
 
 	#######################################
