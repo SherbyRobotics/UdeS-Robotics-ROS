@@ -23,7 +23,7 @@ class propulsion_model(object):
 			self.J   = 0.020881
 			self.V   = 0
 			self.b   = 0
-			self.L   = 0.4
+			self.L   = 0.33
 			self.cmd = 0
 			self.ser = 0 
 			self.t_init = rospy.get_time()

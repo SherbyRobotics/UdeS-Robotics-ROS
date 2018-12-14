@@ -11,12 +11,12 @@
     <param name="port" value="/dev/ttyACM0"/>
   </node>
 
-  <node pkg="slash_propulsion" type="single_propulsion.py" name="PROPULSION" output="screen">
-    <param name="KpCC5" value="0.1"/>
-    <param name="KiCC5" value="0.06"/>
+  <node pkg="slash_propulsion" type="bicycle_dynamic_model.py" name="MODEL" output="screen">
   </node>
 
-  <node pkg="slash_planif" type="planif_single_prop.py" name="PLANIFICATION" output="screen">
+  <node pkg="slash_propulsion" type="single_propulsion.py" name="PROPULSION" output="screen">
+    <param name="KpCC1" value="0.1"/>
+    <param name="KiCC1" value="0.06"/>
   </node>
 
   <arg name="record_msgs" default="true" />

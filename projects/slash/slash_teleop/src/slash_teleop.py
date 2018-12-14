@@ -31,7 +31,7 @@ class teleop(object):
         self.cmd_msg.linear.x = cmd_MA  
         self.cmd_msg.linear.y = cmd_MA 
         
-        self.cmd_msg.angular.z = cmd_ser*self.cmd2rad
+        self.cmd_msg.angular.z = -cmd_ser*self.cmd2rad
 
     ####################################### 
 
@@ -40,7 +40,7 @@ class teleop(object):
         self.cmd_msg.linear.x = cmd_MA  
         self.cmd_msg.linear.y = cmd_MB 
         
-        self.cmd_msg.angular.z = cmd_ser*self.cmd2rad
+        self.cmd_msg.angular.z = -cmd_ser*self.cmd2rad
 
     ####################################### 
         

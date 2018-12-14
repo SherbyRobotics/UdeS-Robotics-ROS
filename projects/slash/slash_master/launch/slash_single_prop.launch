@@ -15,8 +15,8 @@
   </node>
 
   <node pkg="slash_propulsion" type="single_propulsion.py" name="PROPULSION" output="screen">
-    <param name="KpCC5" value="0.07"/>
-    <param name="KiCC5" value="0.08"/>
+    <param name="KpCC1" value="0.1"/>
+    <param name="KiCC1" value="0.06"/>
   </node>
 
 </launch>
