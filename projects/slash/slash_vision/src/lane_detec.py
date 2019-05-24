@@ -91,20 +91,20 @@ class LaneDetector:
     
     converted = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
     # green color mask
-    #lower = np.uint8([  50, 150, 150])
-    #upper = np.uint8([150, 255, 255])
-    #green_mask = cv2.inRange(converted, lower, upper)
+    lower = np.uint8([  50, 150, 150])
+    upper = np.uint8([150, 255, 255])
+    green_mask = cv2.inRange(converted, lower, upper)
     # white color mask
-    lower = np.uint8([  0, 230,   0])
-    upper = np.uint8([255, 255, 255])
-    white_mask = cv2.inRange(converted, lower, upper)
+    #lower = np.uint8([  0, 230,   0])
+    #upper = np.uint8([255, 255, 255])
+    #white_mask = cv2.inRange(converted, lower, upper)
     # yellow color mask
     #lower = np.uint8([ 10,   0, 100])
     #upper = np.uint8([ 40, 255, 255])
     #yellow_mask = cv2.inRange(converted, lower, upper)
     # combine the mask
     #mask = cv2.bitwise_or(white_mask, green_mask)
-    return cv2.bitwise_and(image, image, mask = white_mask)
+    return cv2.bitwise_and(image, image, mask = green_mask)
 
 
   ##########################################################

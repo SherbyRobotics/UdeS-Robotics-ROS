@@ -1,0 +1,10 @@
+<launch>
+
+  <node pkg="vision" type="custom_cv_camreader.py" name="CAM_reader">
+  </node>
+
+  <node pkg="slash_vision" type="line_following.py" name="CAM_treatments" output="screen">
+  </node>
+
+
+</launch>
